@@ -175,34 +175,6 @@ fn parse_e2(toks: &[Token]) -> Option<(Wff, &[Token])> {
         return Some((wff, rem_toks));
     }
 
-    /*
-    // forall <VariableOrConstantName> <E3>
-    if toks.first()? == &Token::Forall {
-        return match toks.get(1)? {
-            Token::Name(name) if name.chars().next()?.is_lowercase() => {
-                if let Some((wff, rem_toks)) = parse_e3(toks.get(2..)?) {
-                    return Some((Wff::Forall(name.to_owned(), Box::new(wff)), rem_toks));
-                }
-                None
-            }
-            _ => None,
-        };
-    }
-
-    // exists <VariableOrConstantName> <E3>
-    if toks.first()? == &Token::Exists {
-        return match toks.get(1)? {
-            Token::Name(name) if name.chars().next()?.is_lowercase() => {
-                if let Some((wff, rem_toks)) = parse_e3(toks.get(2..)?) {
-                    return Some((Wff::Exists(name.to_owned(), Box::new(wff)), rem_toks));
-                }
-                None
-            }
-            _ => None,
-        };
-    }
-    */
-
     // <Term> equals <Term>
     if let Some((term1, rem_toks1)) = parse_term(toks) {
         if rem_toks1.first()? == &Token::Equals {
