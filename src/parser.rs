@@ -476,4 +476,128 @@ mod tests {
     fn test_parser_10() {
         assert_eq!(parse_logical_expression_string("∀(x∀y P(x,y))"), None);
     }
+    #[test]
+    fn test_parser_11() {
+        // the most insane test ever
+        let expected_result = Some(Wff::Or(vec![
+            (Wff::Forall(
+                "x".to_string(),
+                Box::new(Wff::Implies(
+                    Box::new(Wff::PredApp(
+                        "P".to_string(),
+                        vec![
+                            Term::Atomic("a".to_string()),
+                            Term::Atomic("b".to_string()),
+                            Term::Atomic("x".to_string()),
+                        ],
+                    )),
+                    Box::new(Wff::PredApp(
+                        "Q".to_string(),
+                        vec![
+                            Term::FuncApp("f".to_string(), vec![Term::Atomic("a".to_string())]),
+                            Term::FuncApp(
+                                "f".to_string(),
+                                vec![
+                                    Term::Atomic("b".to_string()),
+                                    Term::Atomic("c".to_string()),
+                                    Term::Atomic("d".to_string()),
+                                ],
+                            ),
+                            Term::FuncApp("g".to_string(), vec![Term::Atomic("x".to_string())]),
+                        ],
+                    )),
+                )),
+            )),
+            (Wff::Equals(
+                Term::FuncApp(
+                    "f".to_string(),
+                    vec![Term::Atomic("a".to_string()), Term::Atomic("b".to_string())],
+                ),
+                Term::FuncApp(
+                    "f".to_string(),
+                    vec![
+                        Term::Atomic("bla".to_string()),
+                        Term::Atomic("c".to_string()),
+                    ],
+                ),
+            )),
+            (Wff::Not(Box::new(Wff::Exists(
+                "x".to_string(),
+                Box::new(Wff::Not(Box::new(Wff::Not(Box::new(Wff::Not(Box::new(
+                    Wff::Exists(
+                        "y".to_string(),
+                        Box::new(Wff::Not(Box::new(Wff::Not(Box::new(Wff::Forall(
+                            "z".to_string(),
+                            Box::new(Wff::Not(Box::new(Wff::Not(Box::new(Wff::Implies(
+                                Box::new(Wff::PredApp(
+                                    "P".to_string(),
+                                    vec![
+                                        Term::FuncApp(
+                                            "f".to_string(),
+                                            vec![Term::Atomic("x".to_string())],
+                                        ),
+                                        Term::FuncApp(
+                                            "f".to_string(),
+                                            vec![Term::Atomic("y".to_string())],
+                                        ),
+                                        Term::FuncApp(
+                                            "f".to_string(),
+                                            vec![Term::Atomic("z".to_string())],
+                                        ),
+                                    ],
+                                )),
+                                Box::new(Wff::Not(Box::new(Wff::And(vec![
+                                    Wff::PredApp(
+                                        "A".to_string(),
+                                        vec![Term::Atomic("x".to_string())],
+                                    ),
+                                    Wff::PredApp(
+                                        "B".to_string(),
+                                        vec![Term::Atomic("y".to_string())],
+                                    ),
+                                ])))),
+                            )))))),
+                        )))))),
+                    ),
+                ))))))),
+            )))),
+        ]));
+
+        // correct
+        let expr1 = "∀x(P(a,b,x)→Q(f(a),f(b,c,d),g(x)))∨f(a,b)=f(bla,c)∨¬∃x¬¬¬∃y¬¬∀z¬¬(P(f(x),f(y),f(z))→¬(A(x)∧B(y)))";
+
+        // correct, same as expr1 but with a lot of spaces
+        let expr2 = " ∀ x ( P ( a , b , x )   → Q ( f ( a ) , f ( b , c , d ) , g ( x ) ) ) ∨ f ( a , b ) = f ( bla , c ) ∨ ¬ ∃ x ¬ ¬ ¬ ∃ y ¬ ¬ ∀ z ¬ ¬ ( P ( f ( x ) , f ( y ) , f ( z ) ) → ¬ ( A ( x ) ∧ B ( y ) ) ) ";
+
+        // wrong, misses a bracket in the end
+        let expr3 = "∀x(P(a,b,x)→Q(f(a),f(b,c,d),g(x)))∨f(a,b)=f(bla,c)∨¬∃x¬¬¬∃y¬¬∀z¬¬(P(f(x),f(y),f(z))→¬(A(x)∧B(y))";
+
+        // correct, same as expr1 but with a lot of extra brackets
+        let expr4 = "((∀x((P(a,b,x))→((Q(f(a),f(b,c,d),g(x)))))∨((((((f(a,b)=f(bla,c)))))))∨(¬(∃x(¬(¬(¬(∃y(¬(¬(∀z(¬(¬(P(f(x),f(y),f(z))→¬(A(x)∧B(y))))))))))))))))";
+
+        // wrong, same as expr1 but with brackets in a place where they shouldn't be
+        let expr5 = "∀x(P((a),b,x)→Q(f(a),f(b,c,d),g(x)))∨f(a,b)=f(bla,c)∨¬∃x¬¬¬∃y¬¬∀z¬¬(P(f(x),f(y),f(z))→¬(A(x)∧B(y)))";
+
+        // wrong, same as expr1 but with brackets in a place where they shouldn't be
+        let expr6 = "∀x(P((a,b,x))→Q(f(a),f(b,c,d),g(x)))∨f(a,b)=f(bla,c)∨¬∃x¬¬¬∃y¬¬∀z¬¬(P(f(x),f(y),f(z))→¬(A(x)∧B(y)))";
+
+        // wrong, same as expr1 but with brackets in a place where they shouldn't be
+        let expr7 = "∀x(P(a,b,x)→Q(f(a),f(b,c,d),g(x)))∨f(a,b)=f(bla,c)∨¬∃(x)¬¬¬∃y¬¬∀z¬¬(P(f(x),f(y),f(z))→¬(A(x)∧B(y)))";
+
+        // wrong, same as expr1 but with one ) removed
+        let expr8 = "∀x(P(a,b,x→Q(f(a),f(b,c,d),g(x)))∨f(a,b)=f(bla,c)∨¬∃x¬¬¬∃y¬¬∀z¬¬(P(f(x),f(y),f(z))→¬(A(x)∧B(y)))";
+
+        // wrong, same as expr1 but with one → removed
+        let expr9 = "∀x(P(a,b,x)→Q(f(a),f(b,c,d),g(x)))∨f(a,b)=f(bla,c)∨¬∃x¬¬¬∃y¬¬∀z¬¬(P(f(x),f(y),f(z))¬(A(x)∧B(y)))";
+
+        assert_eq!(parse_logical_expression_string(expr1), expected_result);
+        assert_eq!(parse_logical_expression_string(expr2), expected_result);
+        assert_eq!(parse_logical_expression_string(expr3), None);
+        assert_eq!(parse_logical_expression_string(expr4), expected_result);
+        assert_eq!(parse_logical_expression_string(expr5), None);
+        assert_eq!(parse_logical_expression_string(expr6), None);
+        assert_eq!(parse_logical_expression_string(expr7), None);
+        assert_eq!(parse_logical_expression_string(expr8), None);
+        assert_eq!(parse_logical_expression_string(expr9), None);
+    }
 }

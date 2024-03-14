@@ -1,2 +1,2 @@
-Some(And([Atomic("A"), Atomic("B")]))
+Some(Or([Forall("x", Implies(PredApp("P", [Atomic("a"), Atomic("b"), Atomic("x")]), PredApp("Q", [FuncApp("f", [Atomic("a")]), FuncApp("f", [Atomic("b"), Atomic("c"), Atomic("d")]), FuncApp("g", [Atomic("x")])]))), Equals(FuncApp("f", [Atomic("a"), Atomic("b")]), FuncApp("f", [Atomic("bla"), Atomic("c")])), Not(Exists("x", Not(Not(Not(Exists("y", Not(Not(Forall("z", Not(Not(Implies(PredApp("P", [FuncApp("f", [Atomic("x")]), FuncApp("f", [Atomic("y")]), FuncApp("f", [Atomic("z")])]), Not(And([PredApp("A", [Atomic("x")]), PredApp("B", [Atomic("y")])]))))))))))))))]))
 Hello, world!
