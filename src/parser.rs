@@ -389,24 +389,16 @@ mod tests {
     fn test_parser_2() {
         assert_eq!(
             parse_logical_expression_string("AB"),
-            Some(
-                Wff::Atomic("AB".to_string()),
-            )
+            Some(Wff::Atomic("AB".to_string()),)
         );
     }
     #[test]
     fn test_parser_3() {
-        assert_eq!(
-            parse_logical_expression_string("a∧B"),
-            None
-        );
+        assert_eq!(parse_logical_expression_string("a∧B"), None);
     }
     #[test]
     fn test_parser_4() {
-        assert_eq!(
-            parse_logical_expression_string("aAAA"),
-            None
-        );
+        assert_eq!(parse_logical_expression_string("aAAA"), None);
     }
     #[test]
     fn test_parser_5() {
@@ -420,10 +412,7 @@ mod tests {
     }
     #[test]
     fn test_parser_6() {
-        assert_eq!(
-            parse_logical_expression_string("A∨∧B"),
-            None
-        );
+        assert_eq!(parse_logical_expression_string("A∨∧B"), None);
     }
     #[test]
     fn test_parser_7() {
@@ -437,8 +426,36 @@ mod tests {
     }
     #[test]
     fn test_parser_8() {
+        assert_eq!(parse_logical_expression_string("A→→→B"), None);
+    }
+    #[test]
+    fn test_parser_9() {
         assert_eq!(
-            parse_logical_expression_string("A→→→B"),
+            parse_logical_expression_string("∀x(∀y P(x,y))"),
+            Some(Wff::Forall(
+                "x".to_string(),
+                Box::new(Wff::Forall(
+                    "y".to_string(),
+                    Box::new(Wff::PredApp(
+                        "P".to_string(),
+                        vec![Term::Atomic("x".to_string()), Term::Atomic("y".to_string())]
+                    ))
+                ))
+            ))
+        );
+        assert_eq!(
+            parse_logical_expression_string("∀x(∀y P(x,y))"),
+            parse_logical_expression_string("∀x∀y P(x,y)")
+        );
+        assert_eq!(
+            parse_logical_expression_string("∀x(∀y P(x,y))"),
+            parse_logical_expression_string("(∀x∀y P(x,y))")
+        );
+    }
+    #[test]
+    fn test_parser_10() {
+        assert_eq!(
+            parse_logical_expression_string("∀(x∀y P(x,y))"),
             None
         );
     }
