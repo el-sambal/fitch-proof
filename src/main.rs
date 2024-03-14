@@ -74,22 +74,25 @@ enum Wff {
 
 // Converts token list into syntax 'tree' (Wff) using recursive descent parsing.
 //
-// The grammar: (brackets denote tokens, but {} is EBNF notation for 0 or more times)
+// The grammar: (brackets denote tokens; {} is EBNF notation for 0 or more times)
 //
 // <E1> ::=
-//            forall <N> <E2>
-//          | exists <N> <E2>
-//          | not <E2>
-//          | <E2> {and <E2>}
-//          | <E2> {or <E2>}
+//            <E2>
+//          | <E2> and <E2> {and <E2>}
+//          | <E2> or <E2> {or <E2>}
 //          | <E2> implies <E2>
-//          | <E2>
-//          | <Term> equals <Term>
 //
 // <E2> ::=
-//            ( <E1> )
-//          | <PredicateName> ( <Term> {, <Term>} )
+//            <E3>
+//          | forall <VariableOrConstantName> <E3>
+//          | exists <VariableOrConstantName> <E3>
+//          | <Term> equals <Term>
+//
+// <E3> ::=
+//            <PredicateName> ( <Term> {, <Term>} )
 //          | <AtomicPropositionName>
+//          | not <E3>
+//          | ( <E1> )
 //
 // <Term> ::=
 //              <FunctionName> ( <Term> {, <Term>} )
@@ -99,24 +102,110 @@ enum Wff {
 // <VariableOrConstantName> : some string starting with a lowercase letter
 // <PredicateName> : some string starting with an UPPERCASE letter
 // <AtomicPropositionName> : some string starting with an UPPERCASE letter
+//
 fn parse_logical_expr(toks: &[Token]) -> Option<Wff> {
     if let Some((wff, _)) = parse_e1(toks) {
-        return Some(wff)
+        return Some(wff);
     }
     None
 }
 
 fn parse_e1(toks: &[Token]) -> Option<(Wff, &[Token])> {
-    if toks.is_empty() {
-        return None;
+    // always accept the first <E2>
+    if let Some((wff, mut rem_toks)) = parse_e2(toks) {
+        if rem_toks.is_empty() {
+            return Some((wff, rem_toks));
+        }
+        return match rem_toks[0] {
+            // <E2> implies <E2>
+            Token::Implies => {
+                if let Some((wff2, rem_rem_toks)) = parse_e2(rem_toks.get(1..)?) {
+                    return Some((Wff::Implies(Box::new(wff), Box::new(wff2)), rem_rem_toks));
+                }
+                None
+            }
+            // <E2> and <E2> {and <E2>}
+            Token::And => {
+                let mut conjs: Vec<Wff> = vec![wff];
+                while !rem_toks.is_empty() && rem_toks[0] == Token::And {
+                    if let Some((new_wff, rem_rem_toks)) = parse_e2(rem_toks.get(1..)?) {
+                        rem_toks = rem_rem_toks;
+                        conjs.push(new_wff);
+                    } else {
+                        return None;
+                    }
+                }
+                Some((Wff::And(conjs), rem_toks))
+            }
+            // <E2> or <E2> {or <E2>}
+            Token::Or => {
+                let mut disjs: Vec<Wff> = vec![wff];
+                while !rem_toks.is_empty() && rem_toks[0] == Token::Or {
+                    if let Some((new_wff, rem_rem_toks)) = parse_e2(rem_toks.get(1..)?) {
+                        rem_toks = rem_rem_toks;
+                        disjs.push(new_wff);
+                    } else {
+                        return None;
+                    }
+                }
+                Some((Wff::Or(disjs), rem_toks))
+            }
+            // found just a single <E2>
+            _ => Some((wff, rem_toks)),
+        };
     }
 
-    if toks[0] == Token::Forall {
+    None
+}
 
+fn parse_e2(toks: &[Token]) -> Option<(Wff, &[Token])> {
+    // just <E3>
+    if let Some((wff, rem_toks)) = parse_e3(toks) {
+        return Some((wff, rem_toks));
     }
 
+    // forall <VariableOrConstantName> <E3>
+    if toks.first()? == &Token::Forall {
+        return match toks.get(1)? {
+            Token::Name(name) if name.chars().next()?.is_lowercase() => {
+                if let Some((wff, rem_toks)) = parse_e3(toks.get(2..)?) {
+                    return Some((Wff::Forall(name.to_owned(), Box::new(wff)), rem_toks));
+                }
+                None
+            }
+            _ => None,
+        };
+    }
 
+    // exists <VariableOrConstantName> <E3>
+    if toks.first()? == &Token::Exists {
+        return match toks.get(1)? {
+            Token::Name(name) if name.chars().next()?.is_lowercase() => {
+                if let Some((wff, rem_toks)) = parse_e3(toks.get(2..)?) {
+                    return Some((Wff::Exists(name.to_owned(), Box::new(wff)), rem_toks));
+                }
+                None
+            }
+            _ => None,
+        };
+    }
 
+    // <Term> equals <Term>
+    if let Some((term1, rem_toks1)) = parse_term(toks) {
+        if rem_toks1.first()? == &Token::Equals {
+            if let Some((term2, rem_toks2)) = parse_term(rem_toks1.get(1..)?) {
+                return Some((Wff::Equals(term1, term2), rem_toks2));
+            }
+        }
+    }
+
+    None
+}
+
+fn parse_e3(toks: &[Token]) -> Option<(Wff, &[Token])> {
+    todo!();
+}
+fn parse_term(toks: &[Token]) -> Option<(Term, &[Token])> {
     todo!();
 }
 
