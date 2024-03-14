@@ -93,15 +93,15 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
 //
 // <E2> ::=
 //            <E3>
-//          | forall <VariableOrConstantName> <E3>
-//          | exists <VariableOrConstantName> <E3>
 //          | <Term> equals <Term>
 //
 // <E3> ::=
 //            <PredicateName> <ArgList>
 //          | <AtomicPropositionName>
-//          | not <E3>
 //          | ( <E1> )
+//          | forall <VariableOrConstantName> <E3>
+//          | exists <VariableOrConstantName> <E3>
+//          | not <E3>
 //
 // <Term> ::=
 //              <FunctionName> <ArgList>
@@ -175,6 +175,7 @@ fn parse_e2(toks: &[Token]) -> Option<(Wff, &[Token])> {
         return Some((wff, rem_toks));
     }
 
+    /*
     // forall <VariableOrConstantName> <E3>
     if toks.first()? == &Token::Forall {
         return match toks.get(1)? {
@@ -200,6 +201,7 @@ fn parse_e2(toks: &[Token]) -> Option<(Wff, &[Token])> {
             _ => None,
         };
     }
+    */
 
     // <Term> equals <Term>
     if let Some((term1, rem_toks1)) = parse_term(toks) {
@@ -237,6 +239,24 @@ fn parse_e3(toks: &[Token]) -> Option<(Wff, &[Token])> {
             }
             None
         }
+        Token::Forall => match toks.get(1)? {
+            Token::Name(name) if name.chars().next()?.is_lowercase() => {
+                if let Some((wff, rem_toks)) = parse_e3(toks.get(2..)?) {
+                    return Some((Wff::Forall(name.to_owned(), Box::new(wff)), rem_toks));
+                }
+                None
+            }
+            _ => None,
+        },
+        Token::Exists => match toks.get(1)? {
+            Token::Name(name) if name.chars().next()?.is_lowercase() => {
+                if let Some((wff, rem_toks)) = parse_e3(toks.get(2..)?) {
+                    return Some((Wff::Exists(name.to_owned(), Box::new(wff)), rem_toks));
+                }
+                None
+            }
+            _ => None,
+        },
         _ => None,
     }
 }
@@ -454,9 +474,6 @@ mod tests {
     }
     #[test]
     fn test_parser_10() {
-        assert_eq!(
-            parse_logical_expression_string("∀(x∀y P(x,y))"),
-            None
-        );
+        assert_eq!(parse_logical_expression_string("∀(x∀y P(x,y))"), None);
     }
 }
