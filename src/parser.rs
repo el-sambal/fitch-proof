@@ -115,8 +115,13 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
 // <AtomicPropositionName> : some string starting with an UPPERCASE letter
 //
 fn parse_logical_expr(toks: &[Token]) -> Option<Wff> {
-    if let Some((wff, _)) = parse_e1(toks) {
-        return Some(wff);
+    if let Some((wff, rem_toks)) = parse_e1(toks) {
+        if rem_toks.is_empty() {
+            // there should be no remaining tokens!
+            return Some(wff);
+        } else {
+            return None;
+        }
     }
     None
 }
@@ -571,5 +576,27 @@ mod tests {
         assert_eq!(parse_logical_expression_string(expr7), None);
         assert_eq!(parse_logical_expression_string(expr8), None);
         assert_eq!(parse_logical_expression_string(expr9), None);
+    }
+    #[test]
+    fn test_parser_12() {
+        assert_eq!(parse_logical_expression_string("A∨B∧C"), None);
+    }
+    #[test]
+    fn test_parser_13() {
+        assert_eq!(parse_logical_expression_string("A∧B∨B"), None);
+    }
+    #[test]
+    fn test_parser_14() {
+        assert_eq!(parse_logical_expression_string("a=b=b"), None);
+    }
+    #[test]
+    fn test_parser_15() {
+        assert_eq!(
+            parse_logical_expression_string("a=b"),
+            Some(Wff::Equals(
+                Term::Atomic("a".to_string()),
+                Term::Atomic("b".to_string())
+            ))
+        );
     }
 }
