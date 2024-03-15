@@ -1,9 +1,9 @@
 use std::iter;
 use std::iter::from_fn;
 
-#[path="expr.rs"]
-mod expr;
-use expr::*;
+#[path="data.rs"]
+mod data;
+use data::*;
 
 pub fn parse_logical_expression_string(expr: &str) -> Option<Wff> {
     if let Ok(toks) = lex_logical_expr(expr) {
