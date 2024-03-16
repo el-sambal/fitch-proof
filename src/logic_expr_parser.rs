@@ -295,7 +295,7 @@ fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
 // <FitchProofLine> ::=
 //                        <num> '|' { '|' } <E1> <Justification>             // non-premise
 //                      | <num> '|' { '|' } <E1>                             // premise
-//                      | <num> '|' { '|' } '[' <ConstantName> ']' <E1>      // premise with box
+//                      | <num> '|' { '|' } '[' <ConstantName> ']' [ <E1> ]  // premise with box
 //                      | '|' { '|' } - { - }                                // fitch bar
 //
 // <ConstantName> : some string starting with lowercase letter
@@ -396,21 +396,37 @@ fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
     } else {
         // Now we must be in one if these cases:
         //  <num> '|' { '|' } <E1>
-        //  <num> '|' { '|' } '[' <ConstantName> ']' <E1>
+        //  <num> '|' { '|' } '[' <ConstantName> ']' [ <E1> ]
         //  '|' { '|' } - { - }
         match toks.first()? {
             Token::Number(num) => {
                 if let Token::ConseqVertBar(depth) = toks.get(1)? {
                     let mut const_betw_sqbr: Option<Term> = None;
-                    let expression_start_index: usize =
-                        if let (Some(Token::LSqBracket), Some(Token::Name(name)), Some(Token::RSqBracket)) =
-                            (toks.get(2), toks.get(3), toks.get(4))
-                        {
-                            const_betw_sqbr = Some(Term::Atomic(name.to_string()));
-                            5
-                        } else {
-                            2
-                        };
+                    let expression_start_index: usize = if let (
+                        Some(Token::LSqBracket),
+                        Some(Token::Name(name)),
+                        Some(Token::RSqBracket),
+                    ) =
+                        (toks.get(2), toks.get(3), toks.get(4))
+                    {
+                        const_betw_sqbr = Some(Term::Atomic(name.to_string()));
+                        if toks.len() == 5 {
+                            // this premise contains only a boxed constant, no further expression:
+                            // early exit
+                            return Some(ProofLine {
+                                line_num: Some(*num),
+                                depth: *depth,
+                                is_premise: true,
+                                is_fitch_bar_line: false,
+                                sentence: None,
+                                justification: None,
+                                constant_between_square_brackets: const_betw_sqbr,
+                            });
+                        }
+                        5
+                    } else {
+                        2
+                    };
                     if let Some(wff) = parse_logical_expr(toks.get(expression_start_index..)?) {
                         return Some(ProofLine {
                             line_num: Some(*num),
