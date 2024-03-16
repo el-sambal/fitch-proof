@@ -84,13 +84,12 @@ fn check_line(line: &ProofLine, proof: &Proof) -> Result<(), String> {
                     if ns.len() != conjs.len() {
                         return Err(format!("Error: in line {curr_line_num}, the conjuction introduction rule is used, but the number of conjuncts in that line is not equal to the number of referenced lines."));
                     }
-                    for i in 0..ns.len()
-                    {
-                        if &conjs[i] != get_wff_at_line(ns[i],proof)? {
+                    for i in 0..ns.len() {
+                        if &conjs[i] != get_wff_at_line(ns[i], proof)? {
                             return Err(format!("In line {curr_line_num}, the conjunction introduction rule is used, but the {}\'th conjunct of that line is not the same as the sentence found in line {} (the {}\'th line referenced in the justification).",i+1,ns[i],i+1));
                         }
                     }
-                    return Ok(())
+                    return Ok(());
                 }
             }
             Justification::AndElim(n) => {}
