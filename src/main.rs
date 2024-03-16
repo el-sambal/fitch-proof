@@ -12,6 +12,7 @@ fn main() {
     println!(
         "{:?}",
         logic_expr_parser::parse_fitch_proof(
+            // This proof is from one of the logic worksheets I made (available to all students)
             "
 1  | ∀x∀y(Likes(x,y)→Likes(y,x))
 2  | ∃x∀y Likes(x,y)
