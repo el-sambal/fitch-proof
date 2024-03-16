@@ -12,20 +12,25 @@ pub fn parse_logical_expression_string(expr: &str) -> Option<Wff> {
     None
 }
 
-pub fn parse_logical_expr(toks: &[Token]) -> Option<Wff> {
-    if let Some((wff, rem_toks)) = parse_e1(toks) {
-        if rem_toks.is_empty() {
-            // there should be no remaining tokens!
-            return Some(wff);
-        } else {
-            return None;
-        }
-    }
-    None
+pub fn parse_fitch_proof(proof: &str) -> Option<Proof> {
+    proof
+        .lines()
+        .filter(|s| !s.is_empty())
+        .map(|x| {
+            if let Ok(toks) = lex_logical_expr(x) {
+                parse_proof_line(&toks)
+            } else {
+                None // even if one line gets None, the entire func will return None since Option
+                     // implements FromIterator
+            }
+        })
+        .collect()
 }
 
+/* ----------------- PRIVATE -------------------*/
+
 #[derive(PartialEq, Debug)]
-pub enum Token {
+enum Token {
     Name(String),
     LPar,
     RPar,
@@ -44,8 +49,6 @@ pub enum Token {
     LSqBracket,
     RSqBracket,
 }
-
-/* ----------------- PRIVATE -------------------*/
 
 fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
     let mut toks: Vec<Token> = Vec::new();
@@ -137,6 +140,18 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
 // <VariableOrConstantName> : some string starting with a lowercase letter
 // <PredicateName> : some string starting with an UPPERCASE letter
 // <AtomicPropositionName> : some string starting with an UPPERCASE letter
+
+fn parse_logical_expr(toks: &[Token]) -> Option<Wff> {
+    if let Some((wff, rem_toks)) = parse_e1(toks) {
+        if rem_toks.is_empty() {
+            // there should be no remaining tokens!
+            return Some(wff);
+        } else {
+            return None;
+        }
+    }
+    None
+}
 
 fn parse_e1(toks: &[Token]) -> Option<(Wff, &[Token])> {
     // always accept the first <E2>
@@ -326,21 +341,6 @@ fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
 // want to parse a proof line, we first check whether there is a colon token in it. If there is,
 // then we parse the justification first. For the rest, everything can just be done normally from
 // left to right.
-
-pub fn parse_fitch_proof(proof: &str) -> Option<Proof> {
-    proof
-        .lines()
-        .filter(|s| !s.is_empty())
-        .map(|x| {
-            if let Ok(toks) = lex_logical_expr(x) {
-                parse_proof_line(&toks)
-            } else {
-                None // even if one line gets None, the entire func will return None since Option
-                     // implements FromIterator
-            }
-        })
-        .collect()
-}
 
 fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
     if toks.contains(&Token::Colon) {
