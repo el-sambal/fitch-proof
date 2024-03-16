@@ -1,5 +1,5 @@
-mod fitch_proof_parser;
 mod logic_expr_parser;
+mod data;
 fn main() {
     /*println!(
         "{:?}",
