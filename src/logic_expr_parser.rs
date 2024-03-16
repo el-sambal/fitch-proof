@@ -1,7 +1,7 @@
 use std::iter;
 use std::iter::from_fn;
 
-#[path="data.rs"]
+#[path = "data.rs"]
 mod data;
 use data::*;
 
@@ -12,10 +12,20 @@ pub fn parse_logical_expression_string(expr: &str) -> Option<Wff> {
     None
 }
 
-/* ----------------- PRIVATE -------------------*/
+pub fn parse_logical_expr(toks: &[Token]) -> Option<Wff> {
+    if let Some((wff, rem_toks)) = parse_e1(toks) {
+        if rem_toks.is_empty() {
+            // there should be no remaining tokens!
+            return Some(wff);
+        } else {
+            return None;
+        }
+    }
+    None
+}
 
 #[derive(PartialEq, Debug)]
-enum Token {
+pub enum Token {
     Name(String),
     LPar,
     RPar,
@@ -27,7 +37,13 @@ enum Token {
     Not,
     Comma,
     Equals,
+    Number(usize),
+    ConseqVertBar(usize),
+    Colon,
+    Dash,
 }
+
+/* ----------------- PRIVATE -------------------*/
 
 fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
     let mut toks: Vec<Token> = Vec::new();
@@ -49,11 +65,33 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
             'a'..='z' | 'A'..='Z' => {
                 let name = iter::once(ch)
                     .chain(from_fn(|| {
-                        input_iter.by_ref().next_if(|c| c.is_alphabetic())
+                        input_iter.by_ref().next_if(|c| c.is_ascii_alphabetic())
                     }))
                     .collect::<String>();
                 toks.push(Token::Name(name));
             }
+            '1'..='9' => {
+                let num: usize = iter::once(ch)
+                    .chain(from_fn(|| {
+                        input_iter.by_ref().next_if(|c| c.is_ascii_digit())
+                    }))
+                    .collect::<String>()
+                    .parse()
+                    .unwrap();
+                toks.push(Token::Number(num));
+            }
+            '|' => {
+                let num: usize = iter::once(ch)
+                    .chain(from_fn(|| {
+                        input_iter.by_ref().next_if(|c| c == &'|' || c == &' ')
+                    }))
+                    .filter(|c| c == &'|')
+                    .collect::<String>()
+                    .len();
+                toks.push(Token::ConseqVertBar(num));
+            }
+            ':' => toks.push(Token::Colon),
+            '-' => toks.push(Token::Dash),
             _ => {
                 let mut err: String = "invalid character found: ".to_owned();
                 err.push_str(&ch.to_string());
@@ -65,8 +103,6 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
     Ok(toks)
 }
 
-// Converts token list into syntax 'tree' (Wff) using recursive descent parsing.
-//
 // The grammar: (brackets denote tokens; {} is EBNF notation for 0 or more times)
 //
 // <E1> ::=
@@ -97,18 +133,6 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
 // <VariableOrConstantName> : some string starting with a lowercase letter
 // <PredicateName> : some string starting with an UPPERCASE letter
 // <AtomicPropositionName> : some string starting with an UPPERCASE letter
-//
-fn parse_logical_expr(toks: &[Token]) -> Option<Wff> {
-    if let Some((wff, rem_toks)) = parse_e1(toks) {
-        if rem_toks.is_empty() {
-            // there should be no remaining tokens!
-            return Some(wff);
-        } else {
-            return None;
-        }
-    }
-    None
-}
 
 fn parse_e1(toks: &[Token]) -> Option<(Wff, &[Token])> {
     // always accept the first <E2>
@@ -258,6 +282,246 @@ fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
         }
     } else {
         None
+    }
+}
+
+// The grammar of a Fitch proof:
+//
+// <FitchProof> is several <FitchProofLine>s separated by newline
+// <FitchProofLine> ::=
+//                        <num> '|' { '|' } <E1> <Justification>             // non-premise
+//                      | <num> '|' { '|' } <E1>                             // premise
+//                      | <num> '|' { '|' } '[' <ConstantName> ']' <E1>      // premise with box
+//
+// <ConstantName> : some string starting with lowercase letter
+//
+// <E1> is a full logical expression as parsed by the function parse_logical_expression_string();
+// the grammar for <E1> is defined in logic_expr.parser.rs.
+//
+// <num> is a non-negative decminal integer
+//
+// <Justification> ::=
+//                      | Reit: <num>
+//                      | And Intro: <num> {, <num>}
+//                      | And Elim: <num>
+//                      | Or Intro: <num>
+//                      | Or Elim: <num>, <numrange> {, <numrange>}
+//                      | Implies Intro: <numrange>
+//                      | Implies Elim: <num>, <num>
+//                      | Not Intro: <numrange>
+//                      | Not Elim: <num>
+//                      | Forall Intro: <numrange>
+//                      | Forall Elim: <num>
+//                      | Exists Intro: <num>
+//                      | Exists Elim: <num>, <numrange>
+//
+// Note that Fitch proof lines are not very straightforward to parse, because it can be difficult
+// to find the separation between the <E1> and the <Justification>. However, note that the Colon
+// token only appears in the <Justification>, not in <E1>, <num> or <ConstantName>. Hence, if we
+// want to parse a proof line, we first check whether there is a colon token in it. If there is,
+// then we parse the justification first. For the rest, everything can just be done normally from
+// left to right.
+
+pub fn parse_fitch_proof(proof: &str) -> Option<Proof> {
+    proof
+        .lines()
+        .filter(|s| !s.is_empty())
+        .map(|x| {
+            if let Ok(toks) = lex_logical_expr(x) {
+                parse_proof_line(&toks)
+            } else {
+                None // even if one line gets None, the entire func will return None since Option
+                     // implements FromIterator
+            }
+        })
+        .collect()
+}
+
+fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
+    if toks.contains(&Token::Colon) {
+        // we know that in this case, <FitchProofLine> ::= <num> '|' { '|' } <E1> <Justification>
+        // since only a Justification can legally contain a colon token
+        let colon_index: usize = toks.iter().position(|t| t == &Token::Colon).unwrap();
+        if colon_index < 4 {
+            return None; // colon cannot appear this early
+        }
+        let toks_before_justification: &[Token];
+        let toks_justification: &[Token];
+        if let Token::Name(name) = &toks[colon_index - 1] {
+            match name.as_str() {
+                "Reit" => {
+                    toks_before_justification = &toks[..colon_index - 1];
+                    toks_justification = &toks[colon_index - 1..];
+                }
+                "Intro" | "Elim" => {
+                    toks_before_justification = &toks[..colon_index - 2];
+                    toks_justification = &toks[colon_index - 2..];
+                }
+                _ => {
+                    return None; // nonexistent rule name
+                }
+            }
+
+            if let (
+                Token::Number(line_num),
+                Token::ConseqVertBar(depth),
+                Some(wff),
+                Some(justific),
+            ) = (
+                toks_before_justification.first()?,
+                toks_before_justification.get(1)?,
+                parse_logical_expr(toks_before_justification.get(2..)?),
+                parse_justification(toks_justification),
+            ) {
+                Some(ProofLine {
+                    line_num: *line_num,
+                    depth: *depth,
+                    is_premise: false,
+                    sentence: wff,
+                    justification: justific,
+                })
+            } else {
+                None
+            }
+        } else {
+            None // colon must be preceded by a rule name
+        }
+    } else {
+        todo!()
+    }
+}
+
+fn parse_justification(toks: &[Token]) -> Option<Justification> {
+    match (toks.first()?, toks.get(1)?, toks.get(2)?, toks.get(3)) {
+        (Token::Name(name), Token::Colon, Token::Number(num), None) if name == "Reit" => {
+            Some(Justification::Reit(*num))
+        }
+        (Token::And, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+            if name == "Intro" =>
+        {
+            let mut nums: Vec<usize> = vec![*num];
+            let mut i = 4;
+            while toks.get(i).is_some() {
+                if toks[i] == Token::Comma {
+                    if let Token::Number(next_num) = toks.get(i + 1)? {
+                        nums.push(*next_num);
+                    } else {
+                        return None;
+                    }
+                } else {
+                    return None;
+                }
+                i += 2;
+            }
+            Some(Justification::AndIntro(nums))
+        }
+        (Token::And, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+            if name == "Elim" && toks.get(4).is_none() =>
+        {
+            Some(Justification::AndElim(*num))
+        }
+        (Token::Or, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+            if name == "Intro" && toks.get(4).is_none() =>
+        {
+            Some(Justification::OrIntro(*num))
+        }
+        (Token::Or, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+            if name == "Elim" =>
+        {
+            let mut num_pairs: Vec<(usize, usize)> = vec![];
+            let mut i = 4;
+            toks.get(i)?; // should be at least one num-range provided
+            while toks.get(i).is_some() {
+                if toks[i] == Token::Comma {
+                    if let (Token::Number(next_num1), Token::Dash, Token::Number(next_num2)) =
+                        (toks.get(i + 1)?, toks.get(i + 2)?, toks.get(i + 3)?)
+                    {
+                        num_pairs.push((*next_num1, *next_num2));
+                    } else {
+                        return None;
+                    }
+                } else {
+                    return None;
+                }
+                i += 4;
+            }
+            Some(Justification::OrElim(*num, num_pairs))
+        }
+        (Token::Implies, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
+            if name == "Intro" =>
+        {
+            if let (Token::Dash, Token::Number(num2), None) =
+                (toks.get(4)?, toks.get(5)?, toks.get(6))
+            {
+                Some(Justification::ImpliesIntro((*num1, *num2)))
+            } else {
+                None
+            }
+        }
+        (Token::Implies, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
+            if name == "Elim" =>
+        {
+            if let (Token::Comma, Token::Number(num2), None) =
+                (toks.get(4)?, toks.get(5)?, toks.get(6))
+            {
+                Some(Justification::ImpliesElim(*num1, *num2))
+            } else {
+                None
+            }
+        }
+        (Token::Not, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
+            if name == "Intro" =>
+        {
+            if let (Token::Dash, Token::Number(num2), None) =
+                (toks.get(4)?, toks.get(5)?, toks.get(6))
+            {
+                Some(Justification::NotIntro((*num1, *num2)))
+            } else {
+                None
+            }
+        }
+        (Token::Not, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+            if name == "Elim" && toks.get(4).is_none() =>
+        {
+            Some(Justification::NotElim(*num))
+        }
+        (Token::Forall, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
+            if name == "Intro" =>
+        {
+            if let (Token::Dash, Token::Number(num2), None) =
+                (toks.get(4)?, toks.get(5)?, toks.get(6))
+            {
+                Some(Justification::ForallIntro((*num1, *num2)))
+            } else {
+                None
+            }
+        }
+        (Token::Forall, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+            if name == "Elim" && toks.get(4).is_none() =>
+        {
+            Some(Justification::ForallElim(*num))
+        }
+        (Token::Exists, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+            if name == "Intro" && toks.get(4).is_none() =>
+        {
+            Some(Justification::ExistsIntro(*num))
+        }
+        (Token::Exists, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
+            if name == "Elim" =>
+        {
+            if let (Token::Comma, Token::Number(num2), Token::Dash, Token::Number(num3), None) = (
+                toks.get(4)?,
+                toks.get(5)?,
+                toks.get(6)?,
+                toks.get(7)?,
+                toks.get(8),
+            ) {
+                Some(Justification::ExistsElim(*num1, (*num2, *num3)))
+            } else {
+                None
+            }
+        }
+        _ => None,
     }
 }
 
@@ -581,6 +845,95 @@ mod tests {
                 Term::Atomic("a".to_string()),
                 Term::Atomic("b".to_string())
             ))
+        );
+    }
+
+    #[test]
+    fn test_justification_parser_or_elim() {
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∨Elim:42,43-44").unwrap()),
+            Some(Justification::OrElim(42, vec![(43, 44)]))
+        );
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48").unwrap()),
+            Some(Justification::OrElim(
+                42,
+                vec![(43, 44), (45, 46), (47, 48)]
+            ))
+        );
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47,48").unwrap()),
+            None
+        );
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46-47-48").unwrap()),
+            None
+        );
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∨Elim:42-43-44,45-46,47-48").unwrap()),
+            None
+        );
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∨Elim-42,43-44,45-46,47-48").unwrap()),
+            None
+        );
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,").unwrap()),
+            None
+        );
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,49").unwrap()),
+            None
+        );
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,49-").unwrap()),
+            None
+        );
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∨Elim:42").unwrap()),
+            None
+        );
+    }
+    #[test]
+    fn test_justification_parser_and_intro() {
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∧Intro:42,43,44").unwrap()),
+            Some(Justification::AndIntro(vec![42, 43, 44]))
+        );
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∧Intro:42,43").unwrap()),
+            Some(Justification::AndIntro(vec![42, 43]))
+        );
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∧Intro:42").unwrap()),
+            // TODO: decide whether i want to keep behavior like this (a "unary conjunction")
+            Some(Justification::AndIntro(vec![42]))
+        );
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∧Intro:42-43").unwrap()),
+            None
+        );
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∧Intro:").unwrap()),
+            None
+        );
+    }
+    #[test]
+    fn test_justification_parser_exists_elim() {
+        assert_eq!(
+            parse_justification(&lex_logical_expr("∃Elim:42,43-44").unwrap()),
+            Some(Justification::ExistsElim(42, (43, 44)))
+        );
+    }
+    #[test]
+    fn test_justification_parser_implies_elim() {
+        assert_eq!(
+            parse_justification(&lex_logical_expr("→Elim:42,43").unwrap()),
+            Some(Justification::ImpliesElim(42, 43))
+        );
+        assert_eq!(
+            parse_justification(&lex_logical_expr("→Elim:42,43,").unwrap()),
+            None
         );
     }
 }

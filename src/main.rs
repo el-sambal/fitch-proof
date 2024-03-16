@@ -1,4 +1,5 @@
 mod logic_expr_parser;
+mod fitch_proof_parser;
 fn main() {
     println!(
         "{:?}",
@@ -7,5 +8,6 @@ fn main() {
             "∀ x(P(a,b,x)→Q(f(a),f(b,c,d),g(x)))∨f(a,b)=f(bla,c)∨¬∃x¬¬¬∃y¬¬∀z¬¬(P(f(x),f(y),f(z))→¬(A(x)∧B(y)))"
         )
     );
+    println!("{:?}", logic_expr_parser::parse_fitch_proof("42 || A  Reit : 42"));
     println!("Hello, world!");
 }
