@@ -1,4 +1,4 @@
-mod logic_expr_parser;
+mod parser;
 mod data;
 fn main() {
     /*println!(
@@ -11,7 +11,7 @@ fn main() {
     println!("{:?}", logic_expr_parser::parse_fitch_proof("42 || A  Reit : 42"));*/
     println!(
         "{:?}",
-        logic_expr_parser::parse_fitch_proof(
+        parser::parse_fitch_proof(
             // This proof is from one of the logic worksheets I made (available to all students)
             "
 1  | ∀x∀y(Likes(x,y)→Likes(y,x))
