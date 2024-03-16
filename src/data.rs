@@ -37,11 +37,13 @@ pub enum Justification {
 
 #[derive(PartialEq, Debug)]
 pub struct ProofLine {
-    pub line_num:usize,
-    pub depth: usize,     // the number of vertical bars | on the left of this proof line
-    pub is_premise: bool, // either a main proof premise or subproof premise
-    pub sentence: Wff,
-    pub justification: Justification,
+    pub line_num: Option<usize>, // None iff this line is a Fitch bar
+    pub depth: usize,            // the number of vertical bars | on the left of this proof line
+    pub is_premise: bool,        // true if either a main proof premise or subproof premise
+    pub is_fitch_bar_line: bool,
+    pub sentence: Option<Wff>, // None iff this line is a Fitch bar
+    pub justification: Option<Justification>,
+    pub constant_between_square_brackets: Option<Term>,
 }
 
 pub type Proof = Vec<ProofLine>;

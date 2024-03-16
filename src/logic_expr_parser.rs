@@ -41,6 +41,8 @@ pub enum Token {
     ConseqVertBar(usize),
     Colon,
     Dash,
+    LSqBracket,
+    RSqBracket,
 }
 
 /* ----------------- PRIVATE -------------------*/
@@ -92,6 +94,8 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
             }
             ':' => toks.push(Token::Colon),
             '-' => toks.push(Token::Dash),
+            '[' => toks.push(Token::LSqBracket),
+            ']' => toks.push(Token::RSqBracket),
             _ => {
                 let mut err: String = "invalid character found: ".to_owned();
                 err.push_str(&ch.to_string());
@@ -292,6 +296,7 @@ fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
 //                        <num> '|' { '|' } <E1> <Justification>             // non-premise
 //                      | <num> '|' { '|' } <E1>                             // premise
 //                      | <num> '|' { '|' } '[' <ConstantName> ']' <E1>      // premise with box
+//                      | '|' { '|' } - { - }                                // fitch bar
 //
 // <ConstantName> : some string starting with lowercase letter
 //
@@ -374,11 +379,13 @@ fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
                 parse_justification(toks_justification),
             ) {
                 Some(ProofLine {
-                    line_num: *line_num,
+                    line_num: Some(*line_num),
                     depth: *depth,
                     is_premise: false,
-                    sentence: wff,
-                    justification: justific,
+                    is_fitch_bar_line: false,
+                    sentence: Some(wff),
+                    justification: Some(justific),
+                    constant_between_square_brackets: None,
                 })
             } else {
                 None
@@ -387,7 +394,55 @@ fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
             None // colon must be preceded by a rule name
         }
     } else {
-        todo!()
+        // Now we must be in one if these cases:
+        //  <num> '|' { '|' } <E1>
+        //  <num> '|' { '|' } '[' <ConstantName> ']' <E1>
+        //  '|' { '|' } - { - }
+        match toks.first()? {
+            Token::Number(num) => {
+                if let Token::ConseqVertBar(depth) = toks.get(1)? {
+                    let mut const_betw_sqbr: Option<Term> = None;
+                    let expression_start_index: usize =
+                        if let (Some(Token::LSqBracket), Some(Token::Name(name)), Some(Token::RSqBracket)) =
+                            (toks.get(2), toks.get(3), toks.get(4))
+                        {
+                            const_betw_sqbr = Some(Term::Atomic(name.to_string()));
+                            5
+                        } else {
+                            2
+                        };
+                    if let Some(wff) = parse_logical_expr(toks.get(expression_start_index..)?) {
+                        return Some(ProofLine {
+                            line_num: Some(*num),
+                            depth: *depth,
+                            is_premise: true,
+                            is_fitch_bar_line: false,
+                            sentence: Some(wff),
+                            justification: None,
+                            constant_between_square_brackets: const_betw_sqbr,
+                        });
+                    }
+                }
+
+                None
+            }
+            Token::ConseqVertBar(depth) => {
+                if toks[1..].iter().all(|t| t == &Token::Dash) {
+                    Some(ProofLine {
+                        line_num: None,
+                        depth: *depth,
+                        is_premise: false,
+                        is_fitch_bar_line: true,
+                        sentence: None,
+                        justification: None,
+                        constant_between_square_brackets: None,
+                    })
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
     }
 }
 
