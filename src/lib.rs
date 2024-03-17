@@ -8,10 +8,12 @@ pub fn check_proof(proof: &str) -> String {
     let res = checker::check_proof(proof);
     match res {
         checker::ProofResult::Correct => "correct!".to_string(),
-        checker::ProofResult::LogicError(err) => err,
-        checker::ProofResult::ParserError(err) => err,
+        checker::ProofResult::Error(errs) => errs.join("\n\n"),
+        checker::ProofResult::FatalError(err) => format!("Fatal error: {err}"),
     }
 }
+
+
 
 fn _main() {
     /*println!(
@@ -69,4 +71,22 @@ fn _main() {
 2  | A  ∧B   ∧ Intro:1,2
 ",
     );
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn sometest() {
+        println!("hi");
+        crate::check_proof("1 | A
+2 | B
+  |--
+3 | A  Reit: 1
+4 | A Reit:3
+5 | | A
+  | | --
+6 | | A  Reit: 5
+7 | A Reit:3
+");
+    }
 }
