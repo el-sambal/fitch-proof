@@ -441,34 +441,116 @@ impl Proof {
             curr_line_num = line_num;
         }
 
-        if let (Some(wff), Some(just)) = (&line.sentence, &line.justification) {
+        if let (Some(curr_wff), Some(just)) = (&line.sentence, &line.justification) {
             match just {
                 Justification::Reit(n) => {
                     let ref_wff = self.get_wff_at_line(curr_line_num, *n)?;
-                    if ref_wff == wff {
+                    if curr_wff == ref_wff {
                         return Ok(());
                     } else {
-                        return Err(format!("Error: in line {curr_line_num}, the proof rule Reit is used, but the sentence in this line is not the same as the sentence in the referenced line."));
+                        return Err(format!(
+                            "Error: in line {curr_line_num}, the \
+                                           proof rule Reit is used, but the sentence \
+                                           in this line is not the same as the sentence \
+                                           in the referenced line."
+                        ));
                     }
                 }
                 Justification::AndIntro(ns) => {
-                    if let Wff::And(conjs) = wff {
+                    if let Wff::And(conjs) = curr_wff {
                         if ns.len() != conjs.len() {
-                            return Err(format!("Error: in line {curr_line_num}, the conjuction introduction rule is used, but the number of conjuncts in that line is not equal to the number of referenced lines."));
+                            return Err(format!(
+                                "Error: in line {curr_line_num}, \
+                                               the conjuction introduction rule is used, \
+                                               but the number of conjuncts in that line is \
+                                               not equal to the number of referenced lines."
+                            ));
                         }
                         for i in 0..ns.len() {
                             if &conjs[i] != self.get_wff_at_line(curr_line_num, ns[i])? {
-                                return Err(format!("In line {curr_line_num}, the conjunction introduction rule is used, but the {}\'th conjunct of that line is not the same as the sentence found in line {} (the {}\'th line referenced in the justification).",i+1,ns[i],i+1));
+                                return Err(format!(
+                                    "In line {curr_line_num}, the conjunction \
+                                             introduction rule is used, but the {}\'th \
+                                             conjunct of that line is not the same as \
+                                             the sentence found in line {} (the {}\'th \
+                                             line referenced in the justification).",
+                                    i + 1,
+                                    ns[i],
+                                    i + 1
+                                ));
                             }
                         }
                         return Ok(());
+                    } else {
+                        return Err(format!(
+                            "In line {curr_line_num}, the justification ∧Intro is \
+                                used, but the top-level connective of this line is not ∧."
+                        ));
                     }
                 }
-                Justification::AndElim(n) => {}
-                Justification::OrIntro(n) => {}
-                Justification::OrElim(n, ns) => {}
+                Justification::AndElim(n) => {
+                    let ref_wff = self.get_wff_at_line(curr_line_num, *n)?;
+                    if let Wff::And(conjs) = ref_wff {
+                        if conjs.iter().any(|conj| conj == curr_wff) {
+                            return Ok(());
+                        } else {
+                            return Err(format!(
+                                "In line {curr_line_num}, the justification \
+                                               ∧Intro: {n} is used, but none of the \
+                                               conjuncts in line {n} is identical \
+                                               to line {curr_line_num}."
+                            ));
+                        }
+                    } else {
+                        return Err(format!(
+                            "In line {curr_line_num}, the justification \
+                                    ∧Intro: {n} is used, but the top-level \
+                                    connective of line {n} is not a conjunction."
+                        ));
+                    }
+                }
+                Justification::OrIntro(n) => {
+                    let ref_wff = self.get_wff_at_line(curr_line_num, *n)?;
+                    if let Wff::And(disjs) = ref_wff {
+                        if disjs.iter().any(|disj| disj == ref_wff) {
+                            return Ok(());
+                        } else {
+                            return Err(format!(
+                                "In line {curr_line_num}, the justification \
+                                               ∨Intro: {n} is used, but none of the \
+                                               disjuncts in line {curr_line_num} is identical \
+                                               to line {n}."
+                            ));
+                        }
+                    } else {
+                        return Err(format!(
+                            "In line {curr_line_num}, the justification \
+                                    ∨Intro is used, but the top-level \
+                                    connective of this line is not a disjunction."
+                        ));
+                    }
+                }
+                Justification::OrElim(n, subproofs) => {}
                 Justification::ImpliesIntro((n, m)) => {}
-                Justification::ImpliesElim(n, m) => {}
+                Justification::ImpliesElim(n, m) => {
+                    if let Wff::Implies(wff1, wff2) = self.get_wff_at_line(curr_line_num, *n)? {
+                        let wff_m = self.get_wff_at_line(curr_line_num, *m)?;
+                        if *wff_m == **wff1 && **wff2 == *curr_wff {
+                            return Ok(());
+                        } else {
+                            return Err(format!(
+                                "In line {curr_line_num}, the rule \
+                                               →Elim is wrongly used."
+                            ));
+                        }
+                    } else {
+                        return Err(format!(
+                            "In line {curr_line_num}, the rule \
+                                           →Elim: {n}, {m} is used, but the top-level \
+                                           connective of line {n} is not an implication."
+                        ));
+                    }
+                }
                 Justification::NotIntro((n, m)) => {}
                 Justification::NotElim(n) => {}
                 Justification::ForallIntro((n, m)) => {}
