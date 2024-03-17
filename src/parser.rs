@@ -11,7 +11,7 @@ pub fn parse_logical_expression_string(expr: &str) -> Option<Wff> {
 }
 
 pub fn parse_fitch_proof(proof: &str) -> Option<Vec<ProofLine>> {
-   proof
+    proof
         .lines()
         .filter(|s| !s.is_empty())
         .map(|x| {
@@ -310,6 +310,7 @@ fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
 //                      | <num> '|' { '|' } <E1>                             // premise
 //                      | <num> '|' { '|' } '[' <ConstantName> ']' [ <E1> ]  // premise with box
 //                      | '|' { '|' } - { - }                                // fitch bar
+//                      | '|' { '|' }                                        // empty line
 //
 // <ConstantName> : some string starting with lowercase letter
 //
@@ -396,6 +397,7 @@ fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
         //  <num> '|' { '|' } <E1>
         //  <num> '|' { '|' } '[' <ConstantName> ']' [ <E1> ]
         //  '|' { '|' } - { - }
+        //  '|' { '|' } 
         match toks.first()? {
             Token::Number(num) => {
                 if let Token::ConseqVertBar(depth) = toks.get(1)? {
@@ -446,7 +448,8 @@ fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
                         line_num: None,
                         depth: *depth,
                         is_premise: false,
-                        is_fitch_bar_line: true,
+                        // if there is a dash, then this is a fitch bar. Otherwise it's an empty line.
+                        is_fitch_bar_line: toks[1..].contains(&Token::Dash),
                         sentence: None,
                         justification: None,
                         constant_between_square_brackets: None,

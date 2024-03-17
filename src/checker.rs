@@ -18,6 +18,8 @@ pub fn check_proof(proof_str: &str) -> ProofResult {
     }
 }
 
+/* ------------------ PRIVATE -------------------- */
+
 #[derive(Debug)]
 enum ProofUnit {
     NumberedProofLineInference(usize),
@@ -434,6 +436,9 @@ impl Proof {
     fn check_line(&self, line: &ProofLine) -> Result<(), String> {
         if line.is_premise || line.is_fitch_bar_line {
             return Ok(());
+        }
+        if line.sentence == None {
+            return Ok(())
         }
 
         let mut curr_line_num: usize = usize::MAX;

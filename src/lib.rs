@@ -78,8 +78,10 @@ mod tests {
     #[test]
     fn sometest() {
         println!("hi");
-        crate::check_proof("1 | A
+        crate::check_proof(
+"1 | A
 2 | B
+  |
   |--
 3 | A  Reit: 1
 4 | A Reit:3
