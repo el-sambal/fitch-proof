@@ -1,5 +1,6 @@
 use crate::data::*;
 use crate::parser::parse_fitch_proof;
+use std::iter::zip;
 
 pub enum ProofResult {
     Correct,
@@ -116,6 +117,10 @@ impl Proof {
                     .to_string())
             }
         }
+        let mut depth = 0;
+        // we add 1 whenever we enter a subproof and subtract 1 whenever we exit a subproof. in
+        // order for a proof to be FULLY-well-structured, this number must be 0 again after
+        // processing all the proof units (because a proof's last sentence must be 'top level')
         for i in 0..units.len() {
             match units[i] {
                 ProofUnit::FitchBarLine => {
@@ -128,11 +133,9 @@ impl Proof {
                     //  - an inference
                     //  - a premise (inference for which the user didn't write justification yet)
                     //  - a new subproof
-                    //    and a proof MAY end with a Fitch bar line.
+                    //    and a proof MUST NOT end with a Fitch bar line.
                     if i + 1 == units.len() {
-                        if !check_only_half {
-                            return Err("Error: the proof ends with a Fitch bar.".to_string());
-                        }
+                        return Err("The proof ends with a Fitch bar.".to_string());
                     } else {
                         match units[i + 1] {
                             ProofUnit::NumberedProofLineInference(_) => {}
@@ -148,6 +151,8 @@ impl Proof {
                     }
                 }
                 ProofUnit::SubproofOpen => {
+                    depth += 1;
+
                     // in FULLY-well-structured proofs, after a subproof is opened, there must be:
                     //  - EXACTLY one numbered premise, FOLLOWED by a Fitch bar
                     //  ---------------------
@@ -176,6 +181,8 @@ impl Proof {
                     }
                 }
                 ProofUnit::SubproofClose => {
+                    depth -= 1;
+
                     // in FULLY-well-structured proofs, after a closed subproof there should be either:
                     //  - an inference
                     //  - a new subproof
@@ -249,7 +256,8 @@ impl Proof {
                     //  ---------------------
                     //  in HALF-well-structured proofs, the requirements are the same, EXCEPT that
                     //  a proof MAY end directly after a premise, AND that a premise may also be
-                    //  followed directly by an inference. (Because the user might forget to write
+                    //  followed directly by an inference or a subproof-close or subproof-open.
+                    //  (Because the user might forget to write
                     //  justification for something which is an inference, but the program sees it
                     //  as a premise in that case, but we don't want to give a fatal error so we
                     //  allow an inference to directly follow a premise)
@@ -263,6 +271,8 @@ impl Proof {
                         match units[i + 1] {
                             ProofUnit::FitchBarLine | ProofUnit::NumberedProofLinePremise(_) => {}
                             ProofUnit::NumberedProofLineInference(_) if check_only_half => {}
+                            ProofUnit::SubproofOpen if check_only_half => {}
+                            ProofUnit::SubproofClose if check_only_half => {}
                             _ => {
                                 return Err("Error: after a premise, there should be \
                                      a Fitch bar. Multiple premises are only allowed \
@@ -274,6 +284,10 @@ impl Proof {
                     }
                 }
             }
+        }
+
+        if !check_only_half && depth != 0 {
+            return Err("The last sentence of the proof cannot be inside a subproof.".to_string());
         }
 
         // last but not least: check that the line numbers are correct...
@@ -337,13 +351,15 @@ impl Proof {
     //
     // the first index scope[0] is unused.
     fn determine_scope(units: &[ProofUnit]) -> Vec<(Vec<usize>, Vec<(usize, usize)>)> {
-        let last_line_number: usize = match units.last() {
-            Some(ProofUnit::NumberedProofLineInference(num))
-            | Some(ProofUnit::NumberedProofLinePremise(num)) => *num,
-            _ => {
-                panic!("Oh no, this is a mistake by the developer. You should not try to determine the scope of a non-half-well-structured proof!");
-            }
-        };
+        let last_line_number: usize = units
+            .iter()
+            .filter_map(|u| match u {
+                ProofUnit::NumberedProofLinePremise(num)
+                | ProofUnit::NumberedProofLineInference(num) => Some(*num),
+                _ => None,
+            })
+            .last()
+            .unwrap();
         let mut scope: Vec<(Vec<usize>, Vec<(usize, usize)>)> =
             vec![(vec![], vec![]); last_line_number + 1];
         for i in 0..units.len() {
@@ -374,6 +390,10 @@ impl Proof {
                         ProofUnit::SubproofClose => {
                             depth += 1;
                             if let ProofUnit::NumberedProofLineInference(subproof_end) =
+                                units[j - 1]
+                            {
+                                stack.push(subproof_end);
+                            } else if let ProofUnit::NumberedProofLinePremise(subproof_end) =
                                 units[j - 1]
                             {
                                 stack.push(subproof_end);
@@ -429,16 +449,41 @@ impl Proof {
         }
     }
 
-    // checks the logical validity of a particular proof line within a proof
-    // i.e., checks if the proof rule in the given line has been applied correctly
-    // note that the provided proof line should exist in the proof, of course :)
-    // (TODO call this function with line index instead)
-    fn check_line(&self, line: &ProofLine) -> Result<(), String> {
-        if line.is_premise || line.is_fitch_bar_line {
-            return Ok(());
+    // precondition: referencing_line is an existing line (and the scope needs to be computed
+    // already, but that is always the case since we are working on an already-instantiated Proof
+    // instance, and those cannot be created if their scope cannot be determined)
+    fn get_subproof_at_lines(
+        &self,
+        referencing_line: usize,
+        (subproof_begin, subproof_end): (usize, usize),
+    ) -> Result<(&ProofLine, &ProofLine), String> {
+        if self.scope[referencing_line]
+            .1
+            .contains(&(subproof_begin, subproof_end))
+        {
+            let s_begin = self
+                .lines
+                .iter()
+                .find(|l| l.line_num == Some(subproof_begin))
+                .unwrap();
+            // the unwrap should work, since we can assume that `scope` refers only to valid line numbers
+            let s_end = self
+                .lines
+                .iter()
+                .find(|l| l.line_num == Some(subproof_end))
+                .unwrap();
+            Ok((s_begin, s_end))
+        } else {
+            Err("TODO_ERR 7475276543875".to_string())
         }
-        if line.sentence == None {
-            return Ok(())
+    }
+
+    // checks the logical validity of a particular proof line within a proof
+    // i.e., checks if the proof rule in the given line has been applied correctly.
+    // Note that the provided proof line should exist in the proof, of course :)
+    fn check_line(&self, line: &ProofLine) -> Result<(), String> {
+        if line.sentence.is_none() || line.is_premise {
+            return Ok(());
         }
 
         let mut curr_line_num: usize = usize::MAX;
@@ -535,8 +580,47 @@ impl Proof {
                         ));
                     }
                 }
-                Justification::OrElim(n, subproofs) => {}
-                Justification::ImpliesIntro((n, m)) => {}
+                Justification::OrElim(n, subproofs) => {
+                    if let Wff::Or(disjs) = self.get_wff_at_line(curr_line_num, *n)? {
+                        if disjs.len() != subproofs.len() {
+                            return Err("TODO_ERR".to_string());
+                        }
+                        for (disj, subprf) in zip(disjs, subproofs) {
+                            let (s_begin, s_end) =
+                                self.get_subproof_at_lines(curr_line_num, *subprf)?;
+                            if let (Some(s_begin_wff), Some(s_end_wff)) =
+                                (&s_begin.sentence, &s_end.sentence)
+                            {
+                                if disj != s_begin_wff || s_end_wff != curr_wff {
+                                    return Err("TODO_ERR 064674".to_string());
+                                }
+                            } else {
+                                return Err("TODO_ERR 37045147".to_string());
+                            }
+                        }
+                        return Ok(());
+                    } else {
+                        return Err("TODO_ERR".to_string());
+                    }
+                }
+                Justification::ImpliesIntro((n, m)) => {
+                    if let Wff::Implies(a, b) = curr_wff {
+                        let (s_begin, s_end) =
+                            self.get_subproof_at_lines(curr_line_num, (*n, *m))?;
+                        if let (Some(s_begin_wff), Some(s_end_wff)) =
+                            (&s_begin.sentence, &s_end.sentence)
+                        {
+                            if **a != *s_begin_wff || **b != *s_end_wff {
+                                return Err("TODO_ERR 39487539857".to_string());
+                            }
+                            return Ok(());
+                        } else {
+                            return Err("TODO_ERR 238746282".to_string());
+                        }
+                    } else {
+                        return Err("TODO_ERR 9348327645".to_string());
+                    }
+                }
                 Justification::ImpliesElim(n, m) => {
                     if let Wff::Implies(wff1, wff2) = self.get_wff_at_line(curr_line_num, *n)? {
                         let wff_m = self.get_wff_at_line(curr_line_num, *m)?;

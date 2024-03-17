@@ -79,16 +79,21 @@ mod tests {
     fn sometest() {
         println!("hi");
         crate::check_proof(
-"1 | A
-2 | B
-  |
-  |--
-3 | A  Reit: 1
-4 | A Reit:3
-5 | | A
-  | | --
-6 | | A  Reit: 5
-7 | A Reit:3
+"
+1 | A → C
+2 | B → C
+  | -----
+3 | | A ∨ B
+  | |----
+4 | | | A
+  | | |---
+5 | | | C     →Elim:1,4
+  | |
+6 | | | B
+  | | |---
+7 | | | C     →Elim:2,6
+8 | | C
+9 | (A ∨ B) → C →Intro:3-8
 ");
         crate::check_proof("\n");
     }
