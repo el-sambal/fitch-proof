@@ -10,8 +10,8 @@ pub fn parse_logical_expression_string(expr: &str) -> Option<Wff> {
     None
 }
 
-pub fn parse_fitch_proof(proof: &str) -> Option<Proof> {
-    proof
+pub fn parse_fitch_proof(proof: &str) -> Option<Vec<ProofLine>> {
+   proof
         .lines()
         .filter(|s| !s.is_empty())
         .map(|x| {

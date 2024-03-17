@@ -46,4 +46,3 @@ pub struct ProofLine {
     pub constant_between_square_brackets: Option<Term>,
 }
 
-pub type Proof = Vec<ProofLine>;

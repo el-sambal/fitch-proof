@@ -52,10 +52,10 @@ fn main() {
         checker::check_proof(
             // This proof is from one of the logic worksheets I made (available to all students)
             "
-1  | A
+1  | C
 2  | B
    | ----
-3  | A  ∧B   ∧ Intro:2
+2  | A  ∧B   ∧ Intro:1,2
 "
         );
 
