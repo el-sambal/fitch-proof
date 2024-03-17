@@ -1,32 +1,44 @@
 <html>
-  <head>
-    <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
-  </head>
-  <body>
-    <script type="module">
-      import init, { check_proof } from './pkg/fitch_proof.js';
-      export async function run() {
-        await init();
 
-        //console.log(document.getElementById("proof-field").value);
-        let res = check_proof(document.getElementById("proof-field").value);
-        document.getElementById("feedback").innerText=res;
-        console.log(res);
+<head>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+</head>
 
-      }
+<body style="text-align:center">
+  <strong style="font-size:50px">SUPER PROVER ULTRA++</strong><br><br><br>
+  <script type="module">
+    import init, { check_proof } from './pkg/fitch_proof.js';
+    export async function run() {
+      await init();
 
-      document.getElementById("proof-field").onkeyup = run;
-      run();
-    </script>
-    <textarea rows=30 cols=80 id="proof-field">
+      //console.log(document.getElementById("proof-field").value);
+      let res = check_proof(document.getElementById("proof-field").value);
+      document.getElementById("feedback").innerText = res;
+      console.log(res);
+
+    }
+
+    document.getElementById("proof-field").onkeyup = run;
+    run();
+  </script>
+  <textarea rows=30 cols=80 id="proof-field">
 1 | A
 2 | B
   |--
 3 | A  Reit: 1
 </textarea>
 
-<div id="feedback">
-  Hello
-</div>
-  </body>
+<br>
+<br>
+  <div style="border:3px solid black;font-size:24px; margin=8mm;">Some copy-pasteable characters: ∧ ∨ ¬ → ∀ ∃</div>
+
+  <br>
+  <br>
+  <br>
+  <br>
+  <div id="feedback" style="font-size:30px; border:5px solid purple;padding=3mm;">
+    Hello
+  </div>
+</body>
+
 </html>
