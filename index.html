@@ -1,0 +1,25 @@
+<html>
+  <head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
+  </head>
+  <body>
+    <script type="module">
+      import init, { check_proof } from './pkg/fitch_proof.js';
+      export async function run() {
+        await init();
+
+        console.log(document.getElementById("proof-field").value);
+        console.log(check_proof(document.getElementById("proof-field").value));
+      }
+
+      document.getElementById("proof-field").onkeyup = run;
+      run();
+    </script>
+    <textarea id="proof-field">
+1 | A
+2 | B
+  |--
+3 | A  Reit: 1
+</textarea>
+  </body>
+</html>
