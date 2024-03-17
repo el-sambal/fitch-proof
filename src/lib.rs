@@ -88,5 +88,6 @@ mod tests {
 6 | | A  Reit: 5
 7 | A Reit:3
 ");
+        crate::check_proof("\n");
     }
 }

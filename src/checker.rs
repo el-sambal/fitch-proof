@@ -102,6 +102,9 @@ impl Proof {
     fn is_well_structured(units: &[ProofUnit], check_only_half: bool) -> Result<(), String> {
         // traverse the `ProofUnit`s to check validity of the proof
         // basically, for each "proof unit", we check that the units after that are allowed.
+        if units.is_empty() {
+            return Err("Your proof appears to be empty.".to_string());
+        }
         match units[0] {
             ProofUnit::FitchBarLine => {}
             ProofUnit::NumberedProofLinePremise(_) => {}
@@ -164,7 +167,7 @@ impl Proof {
                     match units[i + 2] {
                         ProofUnit::FitchBarLine => {}
                         _ => {
-                            return Err("Error: a subproof should have exactly one\
+                            return Err("Error: a subproof should have exactly one \
                                          premise, followed by a Fitch bar."
                                 .to_string())
                         }
