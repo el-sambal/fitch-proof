@@ -246,7 +246,7 @@ impl Proof {
                         }
                     }
                 }
-                ProofUnit::NumberedProofLinePremise(num) => {
+                ProofUnit::NumberedProofLinePremise(_) => {
                     // in FULLY-well-structured proofs, after a premise there should be either:
                     //  - a Fitch bar line
                     //  - another premise
@@ -496,14 +496,14 @@ impl Proof {
                 Justification::Reit(n) => {
                     let ref_wff = self.get_wff_at_line(curr_line_num, *n)?;
                     if curr_wff == ref_wff {
-                        return Ok(());
+                        Ok(())
                     } else {
-                        return Err(format!(
+                        Err(format!(
                             "Error: in line {curr_line_num}, the \
                                            proof rule Reit is used, but the sentence \
                                            in this line is not the same as the sentence \
                                            in the referenced line."
-                        ));
+                        ))
                     }
                 }
                 Justification::AndIntro(ns) => {
@@ -530,54 +530,54 @@ impl Proof {
                                 ));
                             }
                         }
-                        return Ok(());
+                        Ok(())
                     } else {
-                        return Err(format!(
+                        Err(format!(
                             "In line {curr_line_num}, the justification ∧Intro is \
                                 used, but the top-level connective of this line is not ∧."
-                        ));
+                        ))
                     }
                 }
                 Justification::AndElim(n) => {
                     let ref_wff = self.get_wff_at_line(curr_line_num, *n)?;
                     if let Wff::And(conjs) = ref_wff {
                         if conjs.iter().any(|conj| conj == curr_wff) {
-                            return Ok(());
+                            Ok(())
                         } else {
-                            return Err(format!(
+                            Err(format!(
                                 "In line {curr_line_num}, the justification \
                                                ∧Intro: {n} is used, but none of the \
                                                conjuncts in line {n} is identical \
                                                to line {curr_line_num}."
-                            ));
+                            ))
                         }
                     } else {
-                        return Err(format!(
+                        Err(format!(
                             "In line {curr_line_num}, the justification \
                                     ∧Intro: {n} is used, but the top-level \
                                     connective of line {n} is not a conjunction."
-                        ));
+                        ))
                     }
                 }
                 Justification::OrIntro(n) => {
                     let ref_wff = self.get_wff_at_line(curr_line_num, *n)?;
                     if let Wff::And(disjs) = ref_wff {
                         if disjs.iter().any(|disj| disj == ref_wff) {
-                            return Ok(());
+                            Ok(())
                         } else {
-                            return Err(format!(
+                            Err(format!(
                                 "In line {curr_line_num}, the justification \
                                                ∨Intro: {n} is used, but none of the \
                                                disjuncts in line {curr_line_num} is identical \
                                                to line {n}."
-                            ));
+                            ))
                         }
                     } else {
-                        return Err(format!(
+                        Err(format!(
                             "In line {curr_line_num}, the justification \
                                     ∨Intro is used, but the top-level \
                                     connective of this line is not a disjunction."
-                        ));
+                        ))
                     }
                 }
                 Justification::OrElim(n, subproofs) => {
@@ -598,9 +598,9 @@ impl Proof {
                                 return Err("TODO_ERR 37045147".to_string());
                             }
                         }
-                        return Ok(());
+                        Ok(())
                     } else {
-                        return Err("TODO_ERR".to_string());
+                        Err("TODO_ERR".to_string())
                     }
                 }
                 Justification::ImpliesIntro((n, m)) => {
@@ -611,46 +611,62 @@ impl Proof {
                             (&s_begin.sentence, &s_end.sentence)
                         {
                             if **a != *s_begin_wff || **b != *s_end_wff {
-                                return Err("TODO_ERR 39487539857".to_string());
+                                Err("TODO_ERR 39487539857".to_string())
+                            } else {
+                                Ok(())
                             }
-                            return Ok(());
                         } else {
-                            return Err("TODO_ERR 238746282".to_string());
+                            Err("TODO_ERR 238746282".to_string())
                         }
                     } else {
-                        return Err("TODO_ERR 9348327645".to_string());
+                        Err("TODO_ERR 9348327645".to_string())
                     }
                 }
                 Justification::ImpliesElim(n, m) => {
                     if let Wff::Implies(wff1, wff2) = self.get_wff_at_line(curr_line_num, *n)? {
                         let wff_m = self.get_wff_at_line(curr_line_num, *m)?;
                         if *wff_m == **wff1 && **wff2 == *curr_wff {
-                            return Ok(());
+                            Ok(())
                         } else {
-                            return Err(format!(
+                            Err(format!(
                                 "In line {curr_line_num}, the rule \
                                                →Elim is wrongly used."
-                            ));
+                            ))
                         }
                     } else {
-                        return Err(format!(
+                        Err(format!(
                             "In line {curr_line_num}, the rule \
                                            →Elim: {n}, {m} is used, but the top-level \
                                            connective of line {n} is not an implication."
-                        ));
+                        ))
                     }
                 }
-                Justification::NotIntro((n, m)) => {}
-                Justification::NotElim(n) => {}
-                Justification::ForallIntro((n, m)) => {}
-                Justification::ForallElim(n) => {}
-                Justification::ExistsIntro(n) => {}
-                Justification::ExistsElim(n, (i, j)) => {}
+                Justification::NotIntro((n, m)) => {
+                    todo!()
+                }
+                Justification::NotElim(n) => {
+                    todo!()
+                }
+                Justification::ForallIntro((n, m)) => {
+                    todo!()
+                }
+                Justification::ForallElim(n) => {
+                    todo!()
+                }
+                Justification::ExistsIntro(n) => {
+                    todo!()
+                }
+                Justification::ExistsElim(n, (i, j)) => {
+                    todo!()
+                }
             }
+        } else {
+            panic!(
+                "If you reach this code, then there was \
+                   some sentence that had no justification \
+                   but was not parsed as  apremise... This \
+                   should be impossible."
+            );
         }
-
-        panic!(
-        "Error: no idea what went wrong here. Please report this issue to the developer. Thanks!"
-    )
     }
 }
