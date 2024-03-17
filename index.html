@@ -8,8 +8,11 @@
       export async function run() {
         await init();
 
-        console.log(document.getElementById("proof-field").value);
-        console.log(check_proof(document.getElementById("proof-field").value));
+        //console.log(document.getElementById("proof-field").value);
+        let res = check_proof(document.getElementById("proof-field").value);
+        document.getElementById("feedback").innerText=res;
+        console.log(res);
+
       }
 
       document.getElementById("proof-field").onkeyup = run;
@@ -21,5 +24,9 @@
   |--
 3 | A  Reit: 1
 </textarea>
+
+<div id="feedback">
+  Hello
+</div>
   </body>
 </html>
