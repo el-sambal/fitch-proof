@@ -7,7 +7,7 @@ mod parser;
 pub fn check_proof(proof: &str) -> String {
     let res = checker::check_proof(proof);
     match res {
-        checker::ProofResult::Correct => "correct!".to_string(),
+        checker::ProofResult::Correct => "Yay, the proof is correct!".to_string(),
         checker::ProofResult::Error(errs) => errs.join("\n\n"),
         checker::ProofResult::FatalError(err) => format!("Fatal error: {err}"),
     }
