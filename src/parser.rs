@@ -573,6 +573,22 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
         {
             Some(Justification::NotElim(*num))
         }
+        (Token::Bottom, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
+            if name == "Intro" =>
+        {
+            if let (Token::Comma, Token::Number(num2), None) =
+                (toks.get(4)?, toks.get(5)?, toks.get(6))
+            {
+                Some(Justification::BottomIntro(*num1, *num2))
+            } else {
+                None
+            }
+        }
+        (Token::Bottom, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+            if name == "Elim" && toks.get(4).is_none() =>
+        {
+            Some(Justification::BottomElim(*num))
+        }
         (Token::Forall, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
             if name == "Intro" =>
         {

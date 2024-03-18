@@ -22,10 +22,20 @@
     run();
   </script>
   <textarea rows=30 cols=80 id="proof-field">
-1 | A
-2 | B
-  |--
-3 | A  Reit: 1
+1 | A → C
+2 | B → C
+  | -----
+3 | | A ∨ B
+  | |----
+4 | | | A
+  | | |---
+5 | | | C     →Elim:1,4
+  | |
+6 | | | B
+  | | |---
+7 | | | C     →Elim:2,6
+8 | | C       ∨Elim:3,4-5,6-7
+9 | (A ∨ B) → C →Intro:3-8
 </textarea>
 
   <br>
