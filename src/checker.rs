@@ -8,7 +8,7 @@ pub enum ProofResult {
     Error(Vec<String>),
 }
 
-// Name says it all.
+// Name says it all :)
 pub fn check_proof(proof_str: &str) -> ProofResult {
     match parse_fitch_proof(proof_str) {
         Some(proof_lines) => match Proof::construct(proof_lines) {
@@ -57,8 +57,9 @@ impl Proof {
         })
     }
 
-    // given a Proof (which 'by definition' is half-well-structured,
-    // otherwise its constructor would have failed), checks if it is fully correct.
+    // given a Proof (which 'by definition' is already HALF-well-structured,
+    // otherwise its construct()or would have failed), checks if it is fully correct
+    // (that is, each line has a valid justification and the proof is FULLY-well-structured).
     // Together with Proof::construct(), this is the method that you should run in
     // order to assess the validity of a proof.
     fn check(&self) -> ProofResult {
@@ -466,7 +467,7 @@ impl Proof {
                 .iter()
                 .find(|l| l.line_num == Some(subproof_begin))
                 .unwrap();
-            // the unwrap should work, since we can assume that `scope` refers only to valid line numbers
+            // the unwrap should work, since `scope` should refer only to valid line numbers
             let s_end = self
                 .lines
                 .iter()
@@ -664,7 +665,7 @@ impl Proof {
             panic!(
                 "If you reach this code, then there was \
                    some sentence that had no justification \
-                   but was not parsed as  apremise... This \
+                   but was not parsed as a premise... This \
                    should be impossible."
             );
         }

@@ -38,6 +38,7 @@ enum Token {
     Or,
     Implies,
     Not,
+    Bot,
     Comma,
     Equals,
     Number(usize),
@@ -97,6 +98,7 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
             '-' => toks.push(Token::Dash),
             '[' => toks.push(Token::LSqBracket),
             ']' => toks.push(Token::RSqBracket),
+            '⊥' => toks.push(Token::Bot),
             _ => {
                 let mut err: String = "invalid character found: ".to_owned();
                 err.push_str(&ch.to_string());
