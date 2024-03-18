@@ -50,7 +50,7 @@ enum Token {
     Or,
     Implies,
     Not,
-    Bot,
+    Bottom,
     Comma,
     Equals,
     Number(usize),
@@ -110,7 +110,7 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
             '-' => toks.push(Token::Dash),
             '[' => toks.push(Token::LSqBracket),
             ']' => toks.push(Token::RSqBracket),
-            '⊥' => toks.push(Token::Bot),
+            '⊥' => toks.push(Token::Bottom),
             _ => {
                 let mut err: String = "invalid character found: ".to_owned();
                 err.push_str(&ch.to_string());
@@ -141,6 +141,7 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
 //          | forall <VariableOrConstantName> <E3>
 //          | exists <VariableOrConstantName> <E3>
 //          | not <E3>
+//          | bottom
 //
 // <Term> ::=
 //              <FunctionName> <ArgList>
@@ -273,6 +274,7 @@ fn parse_e3(toks: &[Token]) -> Option<(Wff, &[Token])> {
             }
             _ => None,
         },
+        Token::Bottom => Some((Wff::Bottom, &toks[1..])),
         _ => None,
     }
 }

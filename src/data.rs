@@ -11,6 +11,7 @@ pub enum Wff {
     Or(Vec<Wff>),
     Implies(Box<Wff>, Box<Wff>),
     Not(Box<Wff>),
+    Bottom,
     Forall(String, Box<Wff>),
     Exists(String, Box<Wff>),
     Atomic(String),             // a nullary predicate (proposition)
