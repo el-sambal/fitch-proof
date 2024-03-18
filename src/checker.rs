@@ -575,7 +575,12 @@ impl Proof {
                 Justification::OrElim(n, subproofs) => {
                     if let Wff::Or(disjs) = self.get_wff_at_line(curr_line_num, *n)? {
                         if disjs.len() != subproofs.len() {
-                            return Err("TODO_ERR".to_string());
+                            return Err(format!(
+                                "Line {curr_line_num}: ∨Elim \
+                                 is used, but the number of disjuncts \
+                                 in this sentence is not equal to \
+                                 the number of referenced subproofs."
+                            ));
                         }
                         for (disj, subprf) in zip(disjs, subproofs) {
                             let (s_begin, s_end) =
@@ -583,16 +588,40 @@ impl Proof {
                             if let (Some(s_begin_wff), Some(s_end_wff)) =
                                 (&s_begin.sentence, &s_end.sentence)
                             {
-                                if disj != s_begin_wff || s_end_wff != curr_wff {
-                                    return Err("TODO_ERR 064674".to_string());
+                                if disj != s_begin_wff {
+                                    return Err(format!(
+                                        "Line {curr_line_num}: ∨Elim \
+                                 is used, but the premise one of the \
+                                 referenced subproofs does not match the \
+                                 corresponding disjunct of the referenced sentence. \
+                                 Note that the subproofs should be referenced in the \
+                                 order of their corresponding disjuncts."
+                                    ));
+                                }
+                                if s_end_wff != curr_wff {
+                                    return Err(format!(
+                                        "Line {curr_line_num}: ∨Elim \
+                                 is used, but not all referenced subproofs end with \
+                                 the same sentence as in line {curr_line_num}."
+                                    ));
                                 }
                             } else {
-                                return Err("TODO_ERR 37045147".to_string());
+                                return Err(format!(
+                                    "Line {curr_line_num}: ∨Elim \
+                                 is used, but one of the referenced subproofs \
+                                 is not of the proper form. When using ∨Elim, \
+                                 you cannot reference subproofs which \
+                                 introduce a boxed constant."
+                                ));
                             }
                         }
                         Ok(())
                     } else {
-                        Err("TODO_ERR".to_string())
+                        Err(format!(
+                            "Line {curr_line_num}: ∨Elim \
+                                 is used, but the top-level connective at \
+                                 the first referenced line is not ∨."
+                        ))
                     }
                 }
                 Justification::ImpliesIntro((n, m)) => {
@@ -602,16 +631,40 @@ impl Proof {
                         if let (Some(s_begin_wff), Some(s_end_wff)) =
                             (&s_begin.sentence, &s_end.sentence)
                         {
-                            if **a != *s_begin_wff || **b != *s_end_wff {
-                                Err("TODO_ERR 39487539857".to_string())
+                            if **a != *s_begin_wff && **b == *s_end_wff {
+                                Err(format!(
+                                    "Line {curr_line_num}: →Intro is used, but \
+                                the premise of the referenced subproof does not match the \
+                                antecedent of the implication found in line {curr_line_num}."
+                                ))
+                            } else if **a == *s_begin_wff && **b != *s_end_wff {
+                                Err(format!(
+                                    "Line {curr_line_num}: →Intro is used, but \
+                                the last sentence of the referenced subproof does not match the \
+                                consequent of the implication found in line {curr_line_num}."
+                                ))
+                            } else if **a != *s_begin_wff && **b != *s_end_wff {
+                                Err(format!(
+                                    "Line {curr_line_num}: →Intro is used, but \
+                                the premise and last sentence of the referenced subproof \
+                                do not match the antecedent and the consequent, respectively, \
+                                of the implication found in line {curr_line_num}."
+                                ))
                             } else {
                                 Ok(())
                             }
                         } else {
-                            Err("TODO_ERR 238746282".to_string())
+                            Err(format!(
+                                "Line {curr_line_num}: when using →Intro, you \
+                        cannot reference a subproof that introduces a boxed constant."
+                            ))
                         }
                     } else {
-                        Err("TODO_ERR 9348327645".to_string())
+                        Err(format!(
+                            "Line {curr_line_num}: →Intro is used, but \
+                            the top-level connective of this sentence \
+                            is not an implication."
+                        ))
                     }
                 }
                 Justification::ImpliesElim(n, m) => {
@@ -634,10 +687,53 @@ impl Proof {
                     }
                 }
                 Justification::NotIntro((n, m)) => {
-                    todo!()
+                    let (s_begin, s_end) = self.get_subproof_at_lines(curr_line_num, (*n, *m))?;
+                    if let Wff::Not(negated) = curr_wff {
+                        if let (Some(s_begin_wff), Some(s_end_wff)) =
+                            (&s_begin.sentence, &s_end.sentence)
+                        {
+                            if **negated == *s_begin_wff {
+                                if *s_end_wff == Wff::Bottom {
+                                    Ok(())
+                                } else {
+                                    Err(format!(
+                                        "Line {curr_line_num}: ¬Intro is used, \
+                                    but the last sentence in the referenced \
+                                    subproof is not ⊥."
+                                    ))
+                                }
+                            } else {
+                                Err(format!(
+                                    "Line {curr_line_num}: ¬Intro is \
+                                            used, but the negation of the premise \
+                                            of the referenced subproof does \
+                                            not match this line."
+                                ))
+                            }
+                        } else {
+                            Err(format!(
+                                "Line {curr_line_num}: ¬Intro is \
+                            used, but the referenced subproof is not \
+                            of the proper form. You cannot use ¬Intro \
+                            on a subproof that introduces a boxed constant."
+                            ))
+                        }
+                    } else {
+                        Err(format!(
+                            "Line {curr_line_num}: ¬Intro is used, \
+                                        but the top-level connective is not ¬."
+                        ))
+                    }
                 }
                 Justification::NotElim(n) => {
-                    todo!()
+                    if let Wff::Not(negd_wff) = self.get_wff_at_line(curr_line_num, *n)? {
+                        if let Wff::Not(negd_negd_wff) = &**negd_wff {
+                            if **negd_negd_wff == *curr_wff {
+                                return Ok(());
+                            }
+                        }
+                    }
+                    Err(format!("Line {curr_line_num}: ¬Elim is used improperly."))
                 }
                 Justification::ForallIntro((n, m)) => {
                     todo!()
