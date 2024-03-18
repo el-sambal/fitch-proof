@@ -1,19 +1,24 @@
+use parser::parse_fitch_proof;
 use wasm_bindgen::prelude::*;
 mod checker;
 mod data;
 mod parser;
+use crate::data::ProofResult;
 
 #[wasm_bindgen]
 pub fn check_proof(proof: &str) -> String {
-    let res = checker::check_proof(proof);
-    match res {
-        checker::ProofResult::Correct => "Yay, the proof is correct!".to_string(),
-        checker::ProofResult::Error(errs) => errs.join("\n\n"),
-        checker::ProofResult::FatalError(err) => format!("Fatal error: {err}"),
+    match parse_fitch_proof(proof) {
+        Ok(proof_lines) => {
+            let res = checker::check_proof(proof_lines);
+            match res {
+                ProofResult::Correct => "Yay, the proof is correct!".to_string(),
+                ProofResult::Error(errs) => errs.join("\n\n"),
+                ProofResult::FatalError(err) => format!("Fatal error: {err}"),
+            }
+        }
+        Err(err) => format!("Fatal error: {err}"),
     }
 }
-
-
 
 fn _main() {
     /*println!(
@@ -63,7 +68,7 @@ fn _main() {
     11 | ∀x∃y Likes(d,y)               ∃ Elim: 2, 3-10
     "
             );*/
-    checker::check_proof(
+    check_proof(
         "
 1  | C
 2  | B
@@ -75,11 +80,12 @@ fn _main() {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     #[test]
     fn sometest() {
         println!("hi");
-        crate::check_proof(
-"
+        println!("{}",check_proof(
+            "
 1 | A → C
 2 | B → C
   | -----
@@ -94,7 +100,9 @@ mod tests {
 7 | | | C     →Elim:2,6
 8 | | C
 9 | (A ∨ B) → C →Intro:3-8
-");
+ 
+"
+        ));
         crate::check_proof("\n");
     }
 }

@@ -10,16 +10,28 @@ pub fn parse_logical_expression_string(expr: &str) -> Option<Wff> {
     None
 }
 
-pub fn parse_fitch_proof(proof: &str) -> Option<Vec<ProofLine>> {
+pub fn parse_fitch_proof(proof: &str) -> Result<Vec<ProofLine>, String> {
+    let mut last_line_num = 0;
     proof
         .lines()
         .filter(|s| !s.is_empty())
         .map(|x| {
             if let Ok(toks) = lex_logical_expr(x) {
-                parse_proof_line(&toks)
+                if let Some(line) = parse_proof_line(&toks) {
+                    if let Some(line_num) = line.line_num {
+                        last_line_num = line_num;
+                    }
+                    Ok(line)
+                } else {
+                    Err(format!(
+                        "Parser failure somewhere after line {last_line_num}."
+                    ))
+                }
             } else {
-                None // even if one line gets None, the entire func will return None since Option
-                     // implements FromIterator
+                Err(format!(
+                    "Lexer failure somewhere after line {last_line_num}. \
+                    You are most likely using an illegal character."
+                ))
             }
         })
         .collect()
@@ -399,7 +411,7 @@ fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
         //  <num> '|' { '|' } <E1>
         //  <num> '|' { '|' } '[' <ConstantName> ']' [ <E1> ]
         //  '|' { '|' } - { - }
-        //  '|' { '|' } 
+        //  '|' { '|' }
         match toks.first()? {
             Token::Number(num) => {
                 if let Token::ConseqVertBar(depth) = toks.get(1)? {

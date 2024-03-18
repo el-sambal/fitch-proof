@@ -1,21 +1,13 @@
 use crate::data::*;
-use crate::parser::parse_fitch_proof;
 use std::iter::zip;
 
-pub enum ProofResult {
-    Correct,
-    FatalError(String),
-    Error(Vec<String>),
-}
+type Scope = Vec<(Vec<usize>, Vec<(usize, usize)>)>;
 
 // Name says it all :)
-pub fn check_proof(proof_str: &str) -> ProofResult {
-    match parse_fitch_proof(proof_str) {
-        Some(proof_lines) => match Proof::construct(proof_lines) {
-            Err(err) => ProofResult::FatalError(err),
-            Ok(proof) => proof.check(),
-        },
-        None => ProofResult::FatalError("Could not parse the proof!".to_string()),
+pub fn check_proof(proof_lines: Vec<ProofLine>) -> ProofResult {
+    match Proof::construct(proof_lines) {
+        Err(err) => ProofResult::FatalError(err),
+        Ok(proof) => proof.is_fully_correct(),
     }
 }
 
@@ -33,7 +25,7 @@ enum ProofUnit {
 // should be always constructed using the construct() method!!!!!
 struct Proof {
     lines: Vec<ProofLine>,
-    scope: Vec<(Vec<usize>, Vec<(usize, usize)>)>,
+    scope: Scope,
     units: Vec<ProofUnit>,
 }
 impl Proof {
@@ -62,7 +54,7 @@ impl Proof {
     // (that is, each line has a valid justification and the proof is FULLY-well-structured).
     // Together with Proof::construct(), this is the method that you should run in
     // order to assess the validity of a proof.
-    fn check(&self) -> ProofResult {
+    fn is_fully_correct(&self) -> ProofResult {
         let mut errors: Vec<String> = vec![];
         for line in &self.lines {
             if let Err(err) = self.check_line(line) {
@@ -351,7 +343,7 @@ impl Proof {
     //   scope[i].1 == <the set of the subproofs i-j (stored as tuple (i,j)) which are referenceable by line i>
     //
     // the first index scope[0] is unused.
-    fn determine_scope(units: &[ProofUnit]) -> Vec<(Vec<usize>, Vec<(usize, usize)>)> {
+    fn determine_scope(units: &[ProofUnit]) -> Scope {
         let last_line_number: usize = units
             .iter()
             .filter_map(|u| match u {
@@ -361,8 +353,7 @@ impl Proof {
             })
             .last()
             .unwrap();
-        let mut scope: Vec<(Vec<usize>, Vec<(usize, usize)>)> =
-            vec![(vec![], vec![]); last_line_number + 1];
+        let mut scope: Scope = vec![(vec![], vec![]); last_line_number + 1];
         for i in 0..units.len() {
             if let ProofUnit::NumberedProofLineInference(num) = units[i] {
                 // used to find referenceable single lines
