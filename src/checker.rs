@@ -735,6 +735,30 @@ impl Proof {
                     }
                     Err(format!("Line {curr_line_num}: ¬Elim is used improperly."))
                 }
+                Justification::BottomIntro(n, m) => {
+                    let wff1 = self.get_wff_at_line(curr_line_num, *n)?;
+                    let wff2 = self.get_wff_at_line(curr_line_num, *m)?;
+                    if let Wff::Not(negd_wff) = wff2 {
+                        if *wff1 == **negd_wff {
+                            return Ok(());
+                        }
+                    }
+                    Err(format!(
+                        "Line {curr_line_num}: ⊥Intro is used, \
+                                       but the second referenced line is not the negation \
+                                       of the first referenced line."
+                    ))
+                }
+                Justification::BottomElim(n) => {
+                    if let Wff::Bottom = self.get_wff_at_line(curr_line_num, *n)? {
+                        Ok(())
+                    } else {
+                        Err(format!(
+                            "Line {curr_line_num}: ⊥Elim is \
+                                    used, but the referenced line is not ⊥."
+                        ))
+                    }
+                }
                 Justification::ForallIntro((n, m)) => {
                     todo!()
                 }

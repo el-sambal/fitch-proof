@@ -27,6 +27,8 @@ pub enum Justification {
     OrElim(usize, Vec<(usize, usize)>),
     NotIntro((usize, usize)),
     NotElim(usize),
+    BottomIntro(usize, usize),
+    BottomElim(usize),
     ImpliesIntro((usize, usize)),
     ImpliesElim(usize, usize),
     ForallIntro((usize, usize)),
