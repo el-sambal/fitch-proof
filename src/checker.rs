@@ -32,15 +32,12 @@ impl Proof {
     // Given a vector of ProofLines, this method constructs the proof. In case this method fails,
     // it means a fatal error will need to be given, because if this method already fails then the
     // proof is not even half-well-structured, and further analysis is impossible. After
-    // construct()ing the proof, you should proof.check() it. The combination of these two things
+    // construct()ing the proof, you should proof.is_fully_correct() it. The combination of these two things
     // allows you to assess the correctness of a proof.
     fn construct(proof_lines: Vec<ProofLine>) -> Result<Proof, String> {
         let units = Self::lines_to_units(&proof_lines)?;
-        println!("{:?}", units);
         Self::is_half_well_structured(&units)?; // check if proof is HALF-well-structured
         let scope = Self::determine_scope(&units);
-
-        println!("{:?}", scope);
 
         Ok(Proof {
             lines: proof_lines,
@@ -51,11 +48,12 @@ impl Proof {
 
     // given a Proof (which 'by definition' is already HALF-well-structured,
     // otherwise its construct()or would have failed), checks if it is fully correct
-    // (that is, each line has a valid justification and the proof is FULLY-well-structured).
+    // (that is, each inference has a valid justification
+    // and the last sentence is not inside a subproof).
     // Together with Proof::construct(), this is the method that you should run in
     // order to assess the validity of a proof.
     fn is_fully_correct(&self) -> ProofResult {
-        let mut errors: Vec<String> = vec![];
+        let mut errors: Vec<String> = vec![]; // here we accumulate all errors
         for line in &self.lines {
             if let Err(err) = self.check_line(line) {
                 println!("{err}");
@@ -70,6 +68,7 @@ impl Proof {
             println!("The proof is correct!");
             ProofResult::Correct
         } else {
+            errors.sort();
             ProofResult::Error(errors)
         }
     }
@@ -466,7 +465,12 @@ impl Proof {
                 .unwrap();
             Ok((s_begin, s_end))
         } else {
-            Err("TODO_ERR 7475276543875".to_string())
+            Err(format!(
+                "Line {referencing_line}: the referenced \
+                        subproof {subproof_begin}-{subproof_end} is \
+                        not in the scope of line {referencing_line}, \
+                        or it does not exist."
+            ))
         }
     }
 
@@ -585,33 +589,38 @@ impl Proof {
                         for (disj, subprf) in zip(disjs, subproofs) {
                             let (s_begin, s_end) =
                                 self.get_subproof_at_lines(curr_line_num, *subprf)?;
-                            if let (Some(s_begin_wff), Some(s_end_wff)) =
-                                (&s_begin.sentence, &s_end.sentence)
+                            if s_begin.constant_between_square_brackets.is_some()
+                                || s_end.constant_between_square_brackets.is_some()
+                            // the last sentence (s_end) in a subproof can
+                            // never introduce a boxed constant, but user can input
+                            // weird things, so dont remove the check for s_end.
                             {
-                                if disj != s_begin_wff {
-                                    return Err(format!(
-                                        "Line {curr_line_num}: ∨Elim \
+                                return Err(format!(
+                                    "Line {curr_line_num}: when using ∨Elim, \
+                                 you cannot reference subproofs which \
+                                 introduce a boxed constant."
+                                ));
+                            }
+                            // unwrap should work, because the only case in which .sentence is
+                            // None, is if it is a line that introduces a boxed constant, and we
+                            // just checked for that.
+                            let s_begin_wff = s_begin.sentence.as_ref().unwrap();
+                            let s_end_wff = s_end.sentence.as_ref().unwrap();
+                            if disj != s_begin_wff {
+                                return Err(format!(
+                                    "Line {curr_line_num}: ∨Elim \
                                  is used, but the premise one of the \
                                  referenced subproofs does not match the \
                                  corresponding disjunct of the referenced sentence. \
                                  Note that the subproofs should be referenced in the \
                                  order of their corresponding disjuncts."
-                                    ));
-                                }
-                                if s_end_wff != curr_wff {
-                                    return Err(format!(
-                                        "Line {curr_line_num}: ∨Elim \
-                                 is used, but not all referenced subproofs end with \
-                                 the same sentence as in line {curr_line_num}."
-                                    ));
-                                }
-                            } else {
+                                ));
+                            }
+                            if s_end_wff != curr_wff {
                                 return Err(format!(
                                     "Line {curr_line_num}: ∨Elim \
-                                 is used, but one of the referenced subproofs \
-                                 is not of the proper form. When using ∨Elim, \
-                                 you cannot reference subproofs which \
-                                 introduce a boxed constant."
+                                 is used, but not all referenced subproofs end with \
+                                 the same sentence as in line {curr_line_num}."
                                 ));
                             }
                         }

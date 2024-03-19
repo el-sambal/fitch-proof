@@ -11,7 +11,7 @@ pub fn check_proof(proof: &str) -> String {
         Ok(proof_lines) => {
             let res = checker::check_proof(proof_lines);
             match res {
-                ProofResult::Correct => "Yay, the proof is correct!".to_string(),
+                ProofResult::Correct => "The proof is correct!".to_string(),
                 ProofResult::Error(errs) => errs.join("\n\n"),
                 ProofResult::FatalError(err) => format!("Fatal error: {err}"),
             }
