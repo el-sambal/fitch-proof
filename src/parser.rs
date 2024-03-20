@@ -3,13 +3,6 @@ use std::iter::from_fn;
 
 use crate::data::*;
 
-pub fn parse_logical_expression_string(expr: &str) -> Option<Wff> {
-    if let Ok(toks) = lex_logical_expr(expr) {
-        return parse_logical_expr(&toks);
-    }
-    None
-}
-
 pub fn parse_fitch_proof(proof: &str) -> Result<Vec<ProofLine>, String> {
     let mut last_line_num = 0;
     proof
@@ -23,9 +16,7 @@ pub fn parse_fitch_proof(proof: &str) -> Result<Vec<ProofLine>, String> {
                     }
                     Ok(line)
                 } else {
-                    Err(format!(
-                        "Parser failure somewhere after line {last_line_num}."
-                    ))
+                    Err(format!("Parser failure somewhere after line {last_line_num}."))
                 }
             } else {
                 Err(format!(
@@ -80,17 +71,13 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
             '=' => toks.push(Token::Equals),
             'a'..='z' | 'A'..='Z' => {
                 let name = iter::once(ch)
-                    .chain(from_fn(|| {
-                        input_iter.by_ref().next_if(|c| c.is_ascii_alphabetic())
-                    }))
+                    .chain(from_fn(|| input_iter.by_ref().next_if(|c| c.is_ascii_alphabetic())))
                     .collect::<String>();
                 toks.push(Token::Name(name));
             }
             '1'..='9' => {
                 let num: usize = iter::once(ch)
-                    .chain(from_fn(|| {
-                        input_iter.by_ref().next_if(|c| c.is_ascii_digit())
-                    }))
+                    .chain(from_fn(|| input_iter.by_ref().next_if(|c| c.is_ascii_digit())))
                     .collect::<String>()
                     .parse()
                     .unwrap();
@@ -98,9 +85,7 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
             }
             '|' => {
                 let num: usize = iter::once(ch)
-                    .chain(from_fn(|| {
-                        input_iter.by_ref().next_if(|c| c == &'|' || c == &' ')
-                    }))
+                    .chain(from_fn(|| input_iter.by_ref().next_if(|c| c == &'|' || c == &' ')))
                     .filter(|c| c == &'|')
                     .collect::<String>()
                     .len();
@@ -613,13 +598,9 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
         (Token::Exists, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
             if name == "Elim" =>
         {
-            if let (Token::Comma, Token::Number(num2), Token::Dash, Token::Number(num3), None) = (
-                toks.get(4)?,
-                toks.get(5)?,
-                toks.get(6)?,
-                toks.get(7)?,
-                toks.get(8),
-            ) {
+            if let (Token::Comma, Token::Number(num2), Token::Dash, Token::Number(num3), None) =
+                (toks.get(4)?, toks.get(5)?, toks.get(6)?, toks.get(7)?, toks.get(8))
+            {
                 Some(Justification::ExistsElim(*num1, (*num2, *num3)))
             } else {
                 None
@@ -632,6 +613,12 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn parse_logical_expression_string(expr: &str) -> Option<Wff> {
+        if let Ok(toks) = lex_logical_expr(expr) {
+            return parse_logical_expr(&toks);
+        }
+        None
+    }
     #[test]
     fn test_lexer_1() {
         assert_eq!(
@@ -728,18 +715,12 @@ mod tests {
     fn test_parser_1() {
         assert_eq!(
             parse_logical_expression_string("A∧B"),
-            Some(Wff::And(vec![
-                Wff::Atomic("A".to_string()),
-                Wff::Atomic("B".to_string())
-            ]))
+            Some(Wff::And(vec![Wff::Atomic("A".to_string()), Wff::Atomic("B".to_string())]))
         );
     }
     #[test]
     fn test_parser_2() {
-        assert_eq!(
-            parse_logical_expression_string("AB"),
-            Some(Wff::Atomic("AB".to_string()),)
-        );
+        assert_eq!(parse_logical_expression_string("AB"), Some(Wff::Atomic("AB".to_string()),));
     }
     #[test]
     fn test_parser_3() {
@@ -753,10 +734,7 @@ mod tests {
     fn test_parser_5() {
         assert_eq!(
             parse_logical_expression_string("A∨B"),
-            Some(Wff::Or(vec![
-                Wff::Atomic("A".to_string()),
-                Wff::Atomic("B".to_string())
-            ]))
+            Some(Wff::Or(vec![Wff::Atomic("A".to_string()), Wff::Atomic("B".to_string())]))
         );
     }
     #[test]
@@ -844,51 +822,40 @@ mod tests {
                 ),
                 Term::FuncApp(
                     "f".to_string(),
-                    vec![
-                        Term::Atomic("bla".to_string()),
-                        Term::Atomic("c".to_string()),
-                    ],
+                    vec![Term::Atomic("bla".to_string()), Term::Atomic("c".to_string())],
                 ),
             )),
             (Wff::Not(Box::new(Wff::Exists(
                 "x".to_string(),
-                Box::new(Wff::Not(Box::new(Wff::Not(Box::new(Wff::Not(Box::new(
-                    Wff::Exists(
-                        "y".to_string(),
-                        Box::new(Wff::Not(Box::new(Wff::Not(Box::new(Wff::Forall(
-                            "z".to_string(),
-                            Box::new(Wff::Not(Box::new(Wff::Not(Box::new(Wff::Implies(
-                                Box::new(Wff::PredApp(
-                                    "P".to_string(),
-                                    vec![
-                                        Term::FuncApp(
-                                            "f".to_string(),
-                                            vec![Term::Atomic("x".to_string())],
-                                        ),
-                                        Term::FuncApp(
-                                            "f".to_string(),
-                                            vec![Term::Atomic("y".to_string())],
-                                        ),
-                                        Term::FuncApp(
-                                            "f".to_string(),
-                                            vec![Term::Atomic("z".to_string())],
-                                        ),
-                                    ],
-                                )),
-                                Box::new(Wff::Not(Box::new(Wff::And(vec![
-                                    Wff::PredApp(
-                                        "A".to_string(),
+                Box::new(Wff::Not(Box::new(Wff::Not(Box::new(Wff::Not(Box::new(Wff::Exists(
+                    "y".to_string(),
+                    Box::new(Wff::Not(Box::new(Wff::Not(Box::new(Wff::Forall(
+                        "z".to_string(),
+                        Box::new(Wff::Not(Box::new(Wff::Not(Box::new(Wff::Implies(
+                            Box::new(Wff::PredApp(
+                                "P".to_string(),
+                                vec![
+                                    Term::FuncApp(
+                                        "f".to_string(),
                                         vec![Term::Atomic("x".to_string())],
                                     ),
-                                    Wff::PredApp(
-                                        "B".to_string(),
+                                    Term::FuncApp(
+                                        "f".to_string(),
                                         vec![Term::Atomic("y".to_string())],
                                     ),
-                                ])))),
-                            )))))),
+                                    Term::FuncApp(
+                                        "f".to_string(),
+                                        vec![Term::Atomic("z".to_string())],
+                                    ),
+                                ],
+                            )),
+                            Box::new(Wff::Not(Box::new(Wff::And(vec![
+                                Wff::PredApp("A".to_string(), vec![Term::Atomic("x".to_string())]),
+                                Wff::PredApp("B".to_string(), vec![Term::Atomic("y".to_string())]),
+                            ])))),
                         )))))),
-                    ),
-                ))))))),
+                    )))))),
+                )))))))),
             )))),
         ]));
 
@@ -945,10 +912,7 @@ mod tests {
     fn test_parser_15() {
         assert_eq!(
             parse_logical_expression_string("a=b"),
-            Some(Wff::Equals(
-                Term::Atomic("a".to_string()),
-                Term::Atomic("b".to_string())
-            ))
+            Some(Wff::Equals(Term::Atomic("a".to_string()), Term::Atomic("b".to_string())))
         );
     }
 
@@ -960,10 +924,7 @@ mod tests {
         );
         assert_eq!(
             parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48").unwrap()),
-            Some(Justification::OrElim(
-                42,
-                vec![(43, 44), (45, 46), (47, 48)]
-            ))
+            Some(Justification::OrElim(42, vec![(43, 44), (45, 46), (47, 48)]))
         );
         assert_eq!(
             parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47,48").unwrap()),
@@ -993,10 +954,7 @@ mod tests {
             parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,49-").unwrap()),
             None
         );
-        assert_eq!(
-            parse_justification(&lex_logical_expr("∨Elim:42").unwrap()),
-            None
-        );
+        assert_eq!(parse_justification(&lex_logical_expr("∨Elim:42").unwrap()), None);
     }
     #[test]
     fn test_justification_parser_and_intro() {
@@ -1013,14 +971,8 @@ mod tests {
             // TODO: decide whether i want to keep behavior like this (a "unary conjunction")
             Some(Justification::AndIntro(vec![42]))
         );
-        assert_eq!(
-            parse_justification(&lex_logical_expr("∧Intro:42-43").unwrap()),
-            None
-        );
-        assert_eq!(
-            parse_justification(&lex_logical_expr("∧Intro:").unwrap()),
-            None
-        );
+        assert_eq!(parse_justification(&lex_logical_expr("∧Intro:42-43").unwrap()), None);
+        assert_eq!(parse_justification(&lex_logical_expr("∧Intro:").unwrap()), None);
     }
     #[test]
     fn test_justification_parser_exists_elim() {
@@ -1035,9 +987,6 @@ mod tests {
             parse_justification(&lex_logical_expr("→Elim:42,43").unwrap()),
             Some(Justification::ImpliesElim(42, 43))
         );
-        assert_eq!(
-            parse_justification(&lex_logical_expr("→Elim:42,43,").unwrap()),
-            None
-        );
+        assert_eq!(parse_justification(&lex_logical_expr("→Elim:42,43,").unwrap()), None);
     }
 }

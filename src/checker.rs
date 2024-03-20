@@ -738,16 +738,16 @@ impl Proof {
                         ))
                     }
                 }
-                Justification::ForallIntro((n, m)) => {
+                Justification::ForallIntro((_, _)) => {
                     todo!()
                 }
-                Justification::ForallElim(n) => {
+                Justification::ForallElim(_) => {
                     todo!()
                 }
-                Justification::ExistsIntro(n) => {
+                Justification::ExistsIntro(_) => {
                     todo!()
                 }
-                Justification::ExistsElim(n, (i, j)) => {
+                Justification::ExistsElim(_, (_, _)) => {
                     todo!()
                 }
             }
