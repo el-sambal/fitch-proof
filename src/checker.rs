@@ -741,7 +741,7 @@ impl Proof {
                 Justification::EqualsIntro(_) => {
                     todo!()
                 }
-                Justification::EqualsElim(_,_) => {
+                Justification::EqualsElim(_, _) => {
                     todo!()
                 }
                 Justification::ForallIntro((_, _)) => {
@@ -764,6 +764,23 @@ impl Proof {
                    but was not parsed as a premise... This \
                    should be impossible."
             );
+        }
+    }
+}
+
+// returns true iff term b can be obtained from term a by applying
+// the substitution subst *zero or more* times.
+fn substitution_has_been_applied(a: &Term, b: &Term, subst: (&Term, &Term)) -> bool {
+    match (&a, &b) {
+        (Term::Atomic(a_name), Term::Atomic(b_name)) => a_name == b_name || subst == (a, b),
+        (Term::Atomic(_), Term::FuncApp(..)) => subst == (a, b),
+        (Term::FuncApp(..), Term::Atomic(_)) => subst == (a, b),
+        (Term::FuncApp(f1_name, args1), Term::FuncApp(f2_name, args2)) => {
+            (subst) == (a, b)
+                || (f1_name == f2_name
+                    && zip(args1, args2)
+                        .all(|(arg1, arg2)| substitution_has_been_applied(arg1, arg2, subst)))
+            // it's almost Haskell <3
         }
     }
 }
