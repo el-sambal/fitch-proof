@@ -1,0 +1,2 @@
+use_small_heuristics = "Off"
+fn_single_line = true

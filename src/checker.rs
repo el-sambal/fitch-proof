@@ -46,6 +46,47 @@ impl Proof {
         })
     }
 
+    // returns a vector containing all line numbers which correspond to "premises"
+    // that are found between a Fitch bar line and a SubproofOpen.
+    // (these would be the inferences with missing justification, but they are parsed as premises)
+    fn line_numbers_missing_justification(&self) -> Vec<usize> {
+        let mut res = vec![]; // store what we're going to return
+        let mut expect_justification = false;
+        for i in 0..self.units.len() {
+            match self.units[i] {
+                ProofUnit::FitchBarLine => {
+                    expect_justification = true;
+                }
+                ProofUnit::SubproofOpen => {
+                    expect_justification = false;
+                }
+                ProofUnit::SubproofClose => {}
+                ProofUnit::NumberedProofLineInference(_) => {}
+                ProofUnit::NumberedProofLinePremise(num) => {
+                    if expect_justification {
+                        res.push(num);
+                    }
+                }
+            }
+        }
+
+        res
+    }
+
+    // returns true iff the last line (that has a line number) is inside subproof
+    fn last_line_is_inside_subproof(&self) -> bool {
+        // unwrap should work, since this proof is half-well-structured, so it should contain some
+        // line that contains a logical sentence or boxed constant (i.e. it has a line number).
+        self.lines.iter().rev().find(|&pl| pl.sentence.is_some()).unwrap().depth > 1
+    }
+
+    // returns the line number of the last sentence of the proof.
+    fn last_line_num(&self) -> usize {
+        // unwrap should work, since this proof is half-well-structured, so it should contain some
+        // line that contains a logical sentence or boxed constant (i.e. it has a line number).
+        self.lines.iter().rev().find(|&pl| pl.line_num.is_some()).unwrap().line_num.unwrap()
+    }
+
     // given a Proof (which 'by definition' is already HALF-well-structured,
     // otherwise its construct()or would have failed), checks if it is fully correct
     // (that is, each inference has a valid justification
@@ -60,12 +101,19 @@ impl Proof {
                 errors.push(err.to_string());
             }
         }
-        if let Err(err) = Self::is_fully_well_structured(&self.units) {
-            errors.push(err.to_string());
+
+        errors.extend(
+            self.line_numbers_missing_justification()
+                .iter()
+                .map(|n| format!("Line {n}: missing justification").to_string()),
+        );
+
+        if self.last_line_is_inside_subproof() {
+            let lln = self.last_line_num();
+            errors.push(format!("Line {lln}: last line of proof should not be inside subproof"));
         }
 
         if errors.is_empty() {
-            println!("The proof is correct!");
             ProofResult::Correct
         } else {
             errors.sort();
@@ -78,23 +126,21 @@ impl Proof {
     // -> (1) parse proof
     // -> (2) check that proof is HALF-well-structured
     // -> (3) check all lines of the proof
-    // -> (4) check that proof is FULLY-well-structured
+    // -> (4) check that proof is fully correct
     // The point is that we want to give the user as helpful error messages as possible. We also
     // want to be able to give the user several meaningful messages at the same time. But if a
     // proof is not even half-well-structured, then it is not even possible to check all lines of
     // it, so a FATAL error will be given, in which case all the other analysis does not happen.
-    // If the user has a HALF-but-not-FULLY-well-structured proof, then it is still possible to
+    // If the user has a HALF-structured (but not fully correct) proof, then it is still possible to
     // perform the more detailed analysis in step 3, so we want that. In this case, the user will
     // get meaningful error messages from all proof lines that are wrong, and that is better than
-    // only a fatal error when they for example just forget one justification.
+    // only a fatal error when they for example just forget one justification somewhere.
+    // A notable allowed thing in half-well-structured proofs is having premises after the Fitch
+    // bar. Of course, this is not allowed in a fully correct proof, but here it means that we
+    // basically allow the user to not write a justification for the time being. In that case it
+    // will be parsed as a premise, so that's why we allow premises. This function won't complain
+    // about it, but of course, this will be checked when the proof is assessed for full correctness.
     fn is_half_well_structured(units: &[ProofUnit]) -> Result<(), String> {
-        Self::is_well_structured(units, true)
-    }
-    // checks if a proof is FULLY-well-structured
-    fn is_fully_well_structured(units: &[ProofUnit]) -> Result<(), String> {
-        Self::is_well_structured(units, false)
-    }
-    fn is_well_structured(units: &[ProofUnit], check_only_half: bool) -> Result<(), String> {
         // traverse the `ProofUnit`s to check validity of the proof
         // basically, for each "proof unit", we check that the units after that are allowed.
         if units.is_empty() {
@@ -109,18 +155,9 @@ impl Proof {
                     .to_string())
             }
         }
-        let mut depth = 0;
-        // we add 1 whenever we enter a subproof and subtract 1 whenever we exit a subproof. in
-        // order for a proof to be FULLY-well-structured, this number must be 0 again after
-        // processing all the proof units (because a proof's last sentence must be 'top level')
         for i in 0..units.len() {
             match units[i] {
                 ProofUnit::FitchBarLine => {
-                    // in FULLY-well-structured proofs, a Fitch bar line may be only succeeded by:
-                    //  - an inference
-                    //  - a new subproof
-                    //    and a proof MUST NOT end with a Fitch bar line.
-                    //  ---------------------
                     // in HALF-well-structured proofs, a Fitch bar line may be succeeded by:
                     //  - an inference
                     //  - a premise (inference for which the user didn't write justification yet)
@@ -132,7 +169,7 @@ impl Proof {
                         match units[i + 1] {
                             ProofUnit::NumberedProofLineInference(_) => {}
                             ProofUnit::SubproofOpen => {}
-                            ProofUnit::NumberedProofLinePremise(_) if check_only_half => {}
+                            ProofUnit::NumberedProofLinePremise(_) => {}
                             _ => {
                                 return Err("Error: Fitch bars should be followed by \
                                            either a new subproof or an inference. \
@@ -143,12 +180,8 @@ impl Proof {
                     }
                 }
                 ProofUnit::SubproofOpen => {
-                    depth += 1;
-
-                    // in FULLY-well-structured proofs, after a subproof is opened, there must be:
+                    // in HALF-well-structured proofs, after a subproof is opened, there must be:
                     //  - EXACTLY one numbered premise, FOLLOWED by a Fitch bar
-                    //  ---------------------
-                    // in HALF-well-structured proofs, the same requirements apply.
                     if i + 1 == units.len() || i + 2 == units.len() {
                         return Err("Error: this proof ends with an opened \
                                    subproof in a way that should not be."
@@ -173,20 +206,13 @@ impl Proof {
                     }
                 }
                 ProofUnit::SubproofClose => {
-                    depth -= 1;
-
-                    // in FULLY-well-structured proofs, after a closed subproof there should be either:
-                    //  - an inference
-                    //  - a new subproof
-                    //    and a proof MUST NOT end directly after a closed subproof.
-                    //  ---------------------
                     // in HALF-well-structured proofs, after a closed subproof there should be either:
                     //  - an inference
                     //  - a premise (inference for which user didn't write justification yet)
                     //  - a new subproof
                     //    and a proof MAY end directly after a closed subproof.
                     if i + 1 == units.len() {
-                        if !check_only_half {
+                        if false {
                             return Err("Error: the proof ends with the closing of a subproof.\
                                        The last line of the proof should always be top-level."
                                 .to_string());
@@ -195,7 +221,7 @@ impl Proof {
                         match units[i + 1] {
                             ProofUnit::NumberedProofLineInference(_) => {}
                             ProofUnit::SubproofOpen => {}
-                            ProofUnit::NumberedProofLinePremise(_) if check_only_half => {}
+                            ProofUnit::NumberedProofLinePremise(_) => {}
                             _ => {
                                 return Err("Error: after closing a subproof, either you \
                                      should open a new subproof or there should be \
@@ -206,12 +232,6 @@ impl Proof {
                     }
                 }
                 ProofUnit::NumberedProofLineInference(_) => {
-                    // in FULLY-well-structured proofs, after an inference there should be either:
-                    //  - the end of the subproof
-                    //  - the opening of a new subproof
-                    //  - another inference
-                    //    and a proof MAY end directly after an inference.
-                    //  ---------------------
                     // in HALF-well-structured proofs, after an inference there should be either:
                     //  - the end of the subproof
                     //  - the opening of a new subproof
@@ -223,78 +243,41 @@ impl Proof {
                             ProofUnit::NumberedProofLineInference(_)
                             | ProofUnit::SubproofOpen
                             | ProofUnit::SubproofClose => {}
-                            ProofUnit::NumberedProofLinePremise(_) if check_only_half => {}
+                            ProofUnit::NumberedProofLinePremise(_) => {}
                             ProofUnit::FitchBarLine => {
                                 return Err("Error: you cannot have a Fitch bar \
                                         after an inference. Maybe you are giving \
                                         justification for a premise?"
                                     .to_string());
                             }
-                            ProofUnit::NumberedProofLinePremise(_) => {
-                                return Err("Error: you cannot have a premise directly \
-                                        after an inference. Maybe some justification is missing?"
-                                    .to_string())
-                            }
                         }
                     }
                 }
                 ProofUnit::NumberedProofLinePremise(_) => {
-                    // in FULLY-well-structured proofs, after a premise there should be either:
+                    // in HALF-well-structured proofs, after a premise there should be either:
                     //  - a Fitch bar line
                     //  - another premise
                     //       (only at the beginning of the proof, but we already check for
                     //        that in the ProofUnit::SubproofOpen arm of this match expression)
-                    //    and a proof MUST NOT end directly after a premise.
-                    //  ---------------------
-                    //  in HALF-well-structured proofs, the requirements are the same, EXCEPT that
-                    //  a proof MAY end directly after a premise, AND that a premise may also be
-                    //  followed directly by an inference or a subproof-close or subproof-open.
-                    //  (Because the user might forget to write
-                    //  justification for something which is an inference, but the program sees it
-                    //  as a premise in that case, but we don't want to give a fatal error so we
-                    //  allow an inference to directly follow a premise)
-                    if i + 1 == units.len() {
-                        if !check_only_half {
-                            return Err("Error: proof cannot end with a premise. Is \
-                                   the justification for the last line missing?"
-                                .to_string());
-                        }
-                    } else {
-                        match units[i + 1] {
-                            ProofUnit::FitchBarLine | ProofUnit::NumberedProofLinePremise(_) => {}
-                            ProofUnit::NumberedProofLineInference(_) if check_only_half => {}
-                            ProofUnit::SubproofOpen if check_only_half => {}
-                            ProofUnit::SubproofClose if check_only_half => {}
-                            _ => {
-                                return Err("Error: after a premise, there should be \
-                                     a Fitch bar. Multiple premises are only allowed \
-                                     at the beginning of the proof; subproofs should \
-                                     have only exactly one premise."
-                                    .to_string())
-                            }
-                        }
-                    }
+                    //  - an inference
+                    //  - a SubproofOpen
+                    //  - a SubproofClose
+                    //    and a proof MAY end directly after a premise.
+                    //
+                    //    No restrictions: this code block is effectively empty
                 }
             }
         }
 
-        if !check_only_half && depth != 0 {
-            return Err("The last sentence of the proof cannot be inside a subproof.".to_string());
-        }
-
         // last but not least: check that the line numbers are correct...
-        // in a HALF-well-structured proof, line numbers must increase, but not necessarily in steps of one.
-        // in a FULLY-well-structured proof, line numbers must increase in steps of one, and the first line number must be 1.
+        // they must start at 1 and increase in steps of 1
         let mut prev_num = 0;
         for unit in units {
             match unit {
                 ProofUnit::NumberedProofLinePremise(num)
                 | ProofUnit::NumberedProofLineInference(num) => {
-                    if check_only_half && *num <= prev_num {
-                        return Err(format!("Line numbers should be increasing! {num} is not bigger than {prev_num}..."));
-                    }
-                    if !check_only_half && *num != prev_num + 1 {
-                        return Err(format!("Line numbers should start at one and increase by one at a time. (See between line {prev_num} and {num})"));
+                    if *num != 1 + prev_num {
+                        return Err(format!("Line numbers are wrong; discrepancy between line {prev_num} and {num}..."));
                     }
                     prev_num = *num;
                 }
@@ -302,7 +285,8 @@ impl Proof {
             }
         }
 
-        Ok(())
+        Ok(()) // nice, proof is HALF-well-structured. we can now perform further analysis without
+               // yielding a fatal error.
     }
 
     // converts proof lines to a vector of so-called ProofUnits which are useful during analysis.
@@ -421,10 +405,7 @@ impl Proof {
         referencing_line: usize,
         requested_line: usize,
     ) -> Result<&Wff, String> {
-        let li = self
-            .lines
-            .iter()
-            .find(|l| l.line_num == Some(requested_line));
+        let li = self.lines.iter().find(|l| l.line_num == Some(requested_line));
         if let Some(l) = li {
             if let Some(wff) = &l.sentence {
                 if self.can_reference(referencing_line, requested_line) {
@@ -448,21 +429,10 @@ impl Proof {
         referencing_line: usize,
         (subproof_begin, subproof_end): (usize, usize),
     ) -> Result<(&ProofLine, &ProofLine), String> {
-        if self.scope[referencing_line]
-            .1
-            .contains(&(subproof_begin, subproof_end))
-        {
-            let s_begin = self
-                .lines
-                .iter()
-                .find(|l| l.line_num == Some(subproof_begin))
-                .unwrap();
+        if self.scope[referencing_line].1.contains(&(subproof_begin, subproof_end)) {
+            let s_begin = self.lines.iter().find(|l| l.line_num == Some(subproof_begin)).unwrap();
             // the unwrap should work, since `scope` should refer only to valid line numbers
-            let s_end = self
-                .lines
-                .iter()
-                .find(|l| l.line_num == Some(subproof_end))
-                .unwrap();
+            let s_end = self.lines.iter().find(|l| l.line_num == Some(subproof_end)).unwrap();
             Ok((s_begin, s_end))
         } else {
             Err(format!(
