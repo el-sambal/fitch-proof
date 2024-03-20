@@ -330,6 +330,10 @@ fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
 //                      | Implies Elim: <num>, <num>
 //                      | Not Intro: <numrange>
 //                      | Not Elim: <num>
+//                      | Equals Intro: <num>
+//                      | Equals Elim: <num>, <num>
+//                      | Bottom Intro: <num>, <num>
+//                      | Bottom Elim: <num>
 //                      | Forall Intro: <numrange>
 //                      | Forall Elim: <num>
 //                      | Exists Intro: <num>
@@ -573,6 +577,22 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
             if name == "Elim" && toks.get(4).is_none() =>
         {
             Some(Justification::BottomElim(*num))
+        }
+        (Token::Equals, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+            if name == "Intro" && toks.get(4).is_none() =>
+        {
+            Some(Justification::EqualsIntro(*num))
+        }
+        (Token::Equals, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
+            if name == "Elim" =>
+        {
+            if let (Token::Comma, Token::Number(num2), None) =
+                (toks.get(4)?, toks.get(5)?, toks.get(6))
+            {
+                Some(Justification::EqualsElim(*num1, *num2))
+            } else {
+                None
+            }
         }
         (Token::Forall, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
             if name == "Intro" =>

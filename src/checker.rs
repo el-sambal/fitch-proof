@@ -738,6 +738,12 @@ impl Proof {
                         ))
                     }
                 }
+                Justification::EqualsIntro(_) => {
+                    todo!()
+                }
+                Justification::EqualsElim(_,_) => {
+                    todo!()
+                }
                 Justification::ForallIntro((_, _)) => {
                     todo!()
                 }

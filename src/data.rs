@@ -31,6 +31,8 @@ pub enum Justification {
     BottomElim(usize),
     ImpliesIntro((usize, usize)),
     ImpliesElim(usize, usize),
+    EqualsIntro(usize),
+    EqualsElim(usize, usize),
     ForallIntro((usize, usize)),
     ForallElim(usize),
     ExistsIntro(usize),
@@ -48,7 +50,6 @@ pub struct ProofLine {
     pub justification: Option<Justification>,
     pub constant_between_square_brackets: Option<Term>,
 }
-
 
 pub enum ProofResult {
     Correct,
