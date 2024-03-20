@@ -465,7 +465,7 @@ impl Proof {
                         Ok(())
                     } else {
                         Err(format!(
-                            "Error: in line {curr_line_num}, the \
+                            "Line {curr_line_num}, the \
                                            proof rule Reit is used, but the sentence \
                                            in this line is not the same as the sentence \
                                            in the referenced line."
@@ -476,7 +476,7 @@ impl Proof {
                     if let Wff::And(conjs) = curr_wff {
                         if ns.len() != conjs.len() {
                             return Err(format!(
-                                "Error: in line {curr_line_num}, \
+                                "Line {curr_line_num}: \
                                                the conjuction introduction rule is used, \
                                                but the number of conjuncts in that line is \
                                                not equal to the number of referenced lines."
@@ -485,7 +485,7 @@ impl Proof {
                         for i in 0..ns.len() {
                             if &conjs[i] != self.get_wff_at_line(curr_line_num, ns[i])? {
                                 return Err(format!(
-                                    "In line {curr_line_num}, the conjunction \
+                                    "Line {curr_line_num}: the conjunction \
                                              introduction rule is used, but the {}\'th \
                                              conjunct of that line is not the same as \
                                              the sentence found in line {} (the {}\'th \
@@ -499,7 +499,7 @@ impl Proof {
                         Ok(())
                     } else {
                         Err(format!(
-                            "In line {curr_line_num}, the justification ∧Intro is \
+                            "Line {curr_line_num}: the justification ∧Intro is \
                                 used, but the top-level connective of this line is not ∧."
                         ))
                     }
@@ -511,7 +511,7 @@ impl Proof {
                             Ok(())
                         } else {
                             Err(format!(
-                                "In line {curr_line_num}, the justification \
+                                "Line {curr_line_num}: the justification \
                                                ∧Intro: {n} is used, but none of the \
                                                conjuncts in line {n} is identical \
                                                to line {curr_line_num}."
@@ -519,7 +519,7 @@ impl Proof {
                         }
                     } else {
                         Err(format!(
-                            "In line {curr_line_num}, the justification \
+                            "Line {curr_line_num}: the justification \
                                     ∧Intro: {n} is used, but the top-level \
                                     connective of line {n} is not a conjunction."
                         ))
@@ -532,7 +532,7 @@ impl Proof {
                             Ok(())
                         } else {
                             Err(format!(
-                                "In line {curr_line_num}, the justification \
+                                "Line {curr_line_num}: the justification \
                                                ∨Intro: {n} is used, but none of the \
                                                disjuncts in line {curr_line_num} is identical \
                                                to line {n}."
@@ -540,7 +540,7 @@ impl Proof {
                         }
                     } else {
                         Err(format!(
-                            "In line {curr_line_num}, the justification \
+                            "Line {curr_line_num}: the justification \
                                     ∨Intro is used, but the top-level \
                                     connective of this line is not a disjunction."
                         ))
@@ -653,13 +653,13 @@ impl Proof {
                             Ok(())
                         } else {
                             Err(format!(
-                                "In line {curr_line_num}, the rule \
+                                "Line {curr_line_num}: the rule \
                                                →Elim is wrongly used."
                             ))
                         }
                     } else {
                         Err(format!(
-                            "In line {curr_line_num}, the rule \
+                            "Line {curr_line_num}: the rule \
                                            →Elim: {n}, {m} is used, but the top-level \
                                            connective of line {n} is not an implication."
                         ))
