@@ -1015,4 +1015,10 @@ mod tests {
         );
         assert_eq!(parse_justification(&lex_logical_expr("→Elim:42,43,").unwrap()), None);
     }
+
+    #[test]
+    fn test_parser_bug_infinite_loop() {
+        let toks = lex_logical_expr("(f(g(a),=b)").unwrap();
+        parse_e2(&toks);
+    }
 }
