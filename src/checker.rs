@@ -527,7 +527,7 @@ impl Proof {
                 }
                 Justification::OrIntro(n) => {
                     let ref_wff = self.get_wff_at_line(curr_line_num, *n)?;
-                    if let Wff::And(disjs) = ref_wff {
+                    if let Wff::Or(disjs) = curr_wff {
                         if disjs.iter().any(|disj| disj == ref_wff) {
                             Ok(())
                         } else {
@@ -725,7 +725,7 @@ impl Proof {
                     Err(format!(
                         "Line {curr_line_num}: ⊥Intro is used, \
                                        but the second referenced line is not the negation \
-                                       of the first referenced line."
+                                       of the first referenced line"
                     ))
                 }
                 Justification::BottomElim(n) => {
@@ -739,10 +739,35 @@ impl Proof {
                     }
                 }
                 Justification::EqualsIntro => {
-                    todo!()
+                    if let Wff::Equals(term1, term2) = curr_wff {
+                        if term1 == term2 {
+                            return Ok(());
+                        }
+                    }
+                    Err(format!("Line {curr_line_num}: =Intro is wrongly used"))
                 }
-                Justification::EqualsElim(_, _) => {
-                    todo!()
+                Justification::EqualsElim(n, m) => {
+                    if let Wff::Equals(subst_old, subst_new) =
+                        self.get_wff_at_line(curr_line_num, *m)?
+                    {
+                        if substitution_has_been_applied_to_wff(
+                            self.get_wff_at_line(curr_line_num, *n)?,
+                            curr_wff,
+                            (subst_old, subst_new),
+                        ) {
+                            Ok(())
+                        } else {
+                            Err(format!("Line {curr_line_num}: the rule =Elim:{n},{m} \
+                            is used, but is is impossible to obtain line {curr_line_num} \
+                            from line {n} by substituting some occurrences of <term1> by \
+                            <term2>, where line {m} is <term1> = <term2>."))
+                        }
+                    } else {
+                        Err(format!(
+                            "Line {curr_line_num}: the rule =Elim:{n},{m} \
+                                    is used, but line {m} is not of the form <term1> = <term2>"
+                        ))
+                    }
                 }
                 Justification::ForallIntro((_, _)) => {
                     todo!()
@@ -770,7 +795,7 @@ impl Proof {
 
 // returns true iff term b can be obtained from term a by applying
 // the substitution subst *zero or more* times.
-fn substitution_has_been_applied(a: &Term, b: &Term, subst: (&Term, &Term)) -> bool {
+fn substitution_has_been_applied_to_term(a: &Term, b: &Term, subst: (&Term, &Term)) -> bool {
     match (&a, &b) {
         (Term::Atomic(a_name), Term::Atomic(b_name)) => a_name == b_name || subst == (a, b),
         (Term::Atomic(_), Term::FuncApp(..)) => subst == (a, b),
@@ -778,9 +803,64 @@ fn substitution_has_been_applied(a: &Term, b: &Term, subst: (&Term, &Term)) -> b
         (Term::FuncApp(f1_name, args1), Term::FuncApp(f2_name, args2)) => {
             (subst) == (a, b)
                 || (f1_name == f2_name
-                    && zip(args1, args2)
-                        .all(|(arg1, arg2)| substitution_has_been_applied(arg1, arg2, subst)))
+                    && zip(args1, args2).all(|(arg1, arg2)| {
+                        substitution_has_been_applied_to_term(arg1, arg2, subst)
+                    }))
             // it's almost Haskell <3
         }
+    }
+}
+
+// returns true iff wff b can be obtained from wff a by applying
+// the substitution subst *zero or more* times.
+fn substitution_has_been_applied_to_wff(a: &Wff, b: &Wff, subst: (&Term, &Term)) -> bool {
+    match (&a, &b) {
+        (Wff::And(conjs1), Wff::And(conjs2)) => {
+            zip(conjs1, conjs2).all(|(c1, c2)| substitution_has_been_applied_to_wff(c1, c2, subst))
+        }
+        (Wff::And(_), _) => false,
+
+        (Wff::Or(disjs1), Wff::Or(disjs2)) => {
+            zip(disjs1, disjs2).all(|(d1, d2)| substitution_has_been_applied_to_wff(d1, d2, subst))
+        }
+        (Wff::Or(_), _) => false,
+
+        (Wff::Implies(ante1, conseq1), Wff::Implies(ante2, conseq2)) => {
+            substitution_has_been_applied_to_wff(ante1, ante2, subst)
+                && substitution_has_been_applied_to_wff(conseq1, conseq2, subst)
+        }
+        (Wff::Implies(..), _) => false,
+
+        (Wff::Not(w1), Wff::Not(w2)) => substitution_has_been_applied_to_wff(w1, w2, subst),
+        (Wff::Not(..), _) => false,
+
+        (Wff::Bottom, Wff::Bottom) => true,
+        (Wff::Bottom, _) => false,
+
+        (Wff::Equals(t11, t12), Wff::Equals(t21, t22)) => {
+            substitution_has_been_applied_to_term(t11, t21, subst)
+                && substitution_has_been_applied_to_term(t12, t22, subst)
+        }
+        (Wff::Equals(..), _) => false,
+
+        (Wff::Atomic(_), Wff::Atomic(_)) => a == b,
+        (Wff::Atomic(_), _) => false,
+
+        (Wff::PredApp(p1, args1), Wff::PredApp(p2, args2)) => {
+            p1 == p2
+                && zip(args1, args2)
+                    .all(|(t1, t2)| substitution_has_been_applied_to_term(t1, t2, subst))
+        }
+        (Wff::PredApp(..), _) => false,
+
+        (Wff::Forall(var1, wff1), Wff::Forall(var2, wff2)) => {
+            var1 == var2 && substitution_has_been_applied_to_wff(wff1, wff2, subst)
+        }
+        (Wff::Forall(..), _) => false,
+
+        (Wff::Exists(var1, wff1), Wff::Exists(var2, wff2)) => {
+            var1 == var2 && substitution_has_been_applied_to_wff(wff1, wff2, subst)
+        }
+        (Wff::Exists(..), _) => false,
     }
 }
