@@ -31,7 +31,7 @@ pub enum Justification {
     BottomElim(usize),
     ImpliesIntro((usize, usize)),
     ImpliesElim(usize, usize),
-    EqualsIntro(usize),
+    EqualsIntro,
     EqualsElim(usize, usize),
     ForallIntro((usize, usize)),
     ForallElim(usize),

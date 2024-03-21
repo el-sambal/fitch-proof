@@ -738,7 +738,7 @@ impl Proof {
                         ))
                     }
                 }
-                Justification::EqualsIntro(_) => {
+                Justification::EqualsIntro => {
                     todo!()
                 }
                 Justification::EqualsElim(_, _) => {

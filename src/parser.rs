@@ -330,7 +330,7 @@ fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
 //                      | Implies Elim: <num>, <num>
 //                      | Not Intro: <numrange>
 //                      | Not Elim: <num>
-//                      | Equals Intro: <num>
+//                      | Equals Intro
 //                      | Equals Elim: <num>, <num>
 //                      | Bottom Intro: <num>, <num>
 //                      | Bottom Elim: <num>
@@ -343,16 +343,22 @@ fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
 // to find the separation between the <E1> and the <Justification>. However, note that the Colon
 // token only appears in the <Justification>, not in <E1>, <num> or <ConstantName>. Hence, if we
 // want to parse a proof line, we first check whether there is a colon token in it. If there is,
-// then we parse the justification first. For the rest, everything can just be done normally from
-// left to right.
+// then we parse the justification first. If the line ends with =Intro, then we also parse the
+// justification first (=Intro is the only justification without colon). For the rest, everything
+// can just be done normally from left to right.
 
 fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
-    if toks.contains(&Token::Colon) {
+    if toks.contains(&Token::Colon)
+        || (toks.last() == Some(&Token::Name("Intro".to_string())) // special check for =Intro
+            && toks.get(toks.len() - 2) == Some(&Token::Equals))
+    {
         // we know that in this case, <FitchProofLine> ::= <num> '|' { '|' } <E1> <Justification>
-        // since only a Justification can legally contain a colon token
-        let colon_index: usize = toks.iter().position(|t| t == &Token::Colon).unwrap();
+        // since only a Justification can legally contain a colon token or end with =Intro
+        let colon_index: usize = toks.iter().position(|t| t == &Token::Colon).unwrap_or(toks.len());
+        // note that we set colon_index to toks.len() in case of =Intro
+
         if colon_index < 4 {
-            return None; // colon cannot appear this early
+            return None; // colon cannot appear this early in a sentence
         }
         let toks_before_justification: &[Token];
         let toks_justification: &[Token];
@@ -469,11 +475,11 @@ fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
 }
 
 fn parse_justification(toks: &[Token]) -> Option<Justification> {
-    match (toks.first()?, toks.get(1)?, toks.get(2)?, toks.get(3)) {
-        (Token::Name(name), Token::Colon, Token::Number(num), None) if name == "Reit" => {
+    match (toks.first()?, toks.get(1)?, toks.get(2), toks.get(3)) {
+        (Token::Name(name), Token::Colon, Some(Token::Number(num)), None) if name == "Reit" => {
             Some(Justification::Reit(*num))
         }
-        (Token::And, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+        (Token::And, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Intro" =>
         {
             let mut nums: Vec<usize> = vec![*num];
@@ -492,17 +498,17 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
             }
             Some(Justification::AndIntro(nums))
         }
-        (Token::And, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+        (Token::And, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Elim" && toks.get(4).is_none() =>
         {
             Some(Justification::AndElim(*num))
         }
-        (Token::Or, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+        (Token::Or, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Intro" && toks.get(4).is_none() =>
         {
             Some(Justification::OrIntro(*num))
         }
-        (Token::Or, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+        (Token::Or, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Elim" =>
         {
             let mut num_pairs: Vec<(usize, usize)> = vec![];
@@ -524,7 +530,7 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
             }
             Some(Justification::OrElim(*num, num_pairs))
         }
-        (Token::Implies, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
+        (Token::Implies, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
             if let (Token::Dash, Token::Number(num2), None) =
@@ -535,7 +541,7 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
                 None
             }
         }
-        (Token::Implies, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
+        (Token::Implies, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Elim" =>
         {
             if let (Token::Comma, Token::Number(num2), None) =
@@ -546,7 +552,7 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
                 None
             }
         }
-        (Token::Not, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
+        (Token::Not, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
             if let (Token::Dash, Token::Number(num2), None) =
@@ -557,12 +563,12 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
                 None
             }
         }
-        (Token::Not, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+        (Token::Not, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Elim" && toks.get(4).is_none() =>
         {
             Some(Justification::NotElim(*num))
         }
-        (Token::Bottom, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
+        (Token::Bottom, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
             if let (Token::Comma, Token::Number(num2), None) =
@@ -573,17 +579,17 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
                 None
             }
         }
-        (Token::Bottom, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+        (Token::Bottom, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Elim" && toks.get(4).is_none() =>
         {
             Some(Justification::BottomElim(*num))
         }
-        (Token::Equals, Token::Name(name), Token::Colon, Some(Token::Number(num)))
-            if name == "Intro" && toks.get(4).is_none() =>
+        (Token::Equals, Token::Name(name), None, None)
+            if name == "Intro" =>
         {
-            Some(Justification::EqualsIntro(*num))
+            Some(Justification::EqualsIntro)
         }
-        (Token::Equals, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
+        (Token::Equals, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Elim" =>
         {
             if let (Token::Comma, Token::Number(num2), None) =
@@ -594,7 +600,7 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
                 None
             }
         }
-        (Token::Forall, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
+        (Token::Forall, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
             if let (Token::Dash, Token::Number(num2), None) =
@@ -605,17 +611,17 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
                 None
             }
         }
-        (Token::Forall, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+        (Token::Forall, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Elim" && toks.get(4).is_none() =>
         {
             Some(Justification::ForallElim(*num))
         }
-        (Token::Exists, Token::Name(name), Token::Colon, Some(Token::Number(num)))
+        (Token::Exists, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Intro" && toks.get(4).is_none() =>
         {
             Some(Justification::ExistsIntro(*num))
         }
-        (Token::Exists, Token::Name(name), Token::Colon, Some(Token::Number(num1)))
+        (Token::Exists, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Elim" =>
         {
             if let (Token::Comma, Token::Number(num2), Token::Dash, Token::Number(num3), None) =
