@@ -290,6 +290,8 @@ fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
             if let Some((term2, rem_rem_toks)) = parse_term(rem_toks.get(1..)?) {
                 terms.push(term2);
                 rem_toks = rem_rem_toks;
+            } else {
+                return None;
             }
         }
 
@@ -1017,8 +1019,24 @@ mod tests {
     }
 
     #[test]
-    fn test_parser_bug_infinite_loop() {
+    fn test_parser_bug_infinite_loop_1() {
         let toks = lex_logical_expr("(f(g(a),=b)").unwrap();
         parse_e2(&toks);
+    }
+
+    #[test]
+    fn test_parser_bug_infinite_loop_2() {
+        let toks = lex_logical_expr("f(g(a),=b").unwrap();
+        parse_e1(&toks);
+    }
+    #[test]
+    fn test_parser_bug_infinite_loop_3() {
+        let toks = lex_logical_expr("f(g(a),=b").unwrap();
+        parse_term(&toks);
+    }
+    #[test]
+    fn test_parser_bug_infinite_loop_4() {
+        let toks = lex_logical_expr("(g(a),=b").unwrap();
+        parse_arg_list(&toks);
     }
 }
