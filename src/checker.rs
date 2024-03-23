@@ -235,7 +235,7 @@ impl Proof {
                 }),
             }
         }
-        check_variable_scoping_issues_helper(self,wff, line_num, &mut vec![])
+        check_variable_scoping_issues_helper(self, wff, line_num, &mut vec![])
     }
 
     // checks if a proof is HALF-well-structured.
@@ -878,7 +878,7 @@ impl Proof {
                                 "Line {curr_line_num}: the rule =Elim:{n},{m} \
                             is used, but is is impossible to obtain line {curr_line_num} \
                             from line {n} by substituting some occurrences of <term1> by \
-                            <term2>, where line {m} is <term1> = <term2>."
+                            <term2>, where line {m} is <term1> = <term2>"
                             ))
                         }
                     } else {
@@ -908,7 +908,7 @@ impl Proof {
                                     Err(format!(
                                         "Line {curr_line_num}: the rule ∀Elim:{n} is used, \
                                                 but you did not substitute a *closed* term for \
-                                                all occurrences of the variable {var} in line {n}."
+                                                all occurrences of the variable {var} in line {n}"
                                     ))
                                 };
                             }
@@ -917,13 +917,13 @@ impl Proof {
                             "Line {curr_line_num}: the rule \
                                         ∀Elim:{n} is used, but there is no \
                                         appropriate substitution between line \
-                                        {n} and line {curr_line_num}."
+                                        {n} and line {curr_line_num}"
                         ))
                     } else {
                         Err(format!(
                             "Line {curr_line_num}: the justification \
                                     ∀Elim:{n} is used, but line {n} is not a \
-                                    universally quantified sentence at the top level."
+                                    universally quantified sentence at the top level"
                         ))
                     }
                 }
@@ -946,7 +946,7 @@ impl Proof {
                                         "Line {curr_line_num}: the rule ∃Intro:{n} is \
                                                 used, but the term in line {n} that you \
                                                 substitute {var} for in line {curr_line_num} \
-                                                is not a *closed* term."
+                                                is not a *closed* term"
                                     ))
                                 };
                             }
@@ -958,18 +958,52 @@ impl Proof {
                             "Line {curr_line_num}: the rule \
                                         ∃Intro:{n} is used, but there is no \
                                         appropriate substitution between line \
-                                        {n} and line {curr_line_num}."
+                                        {n} and line {curr_line_num}"
                         ))
                     } else {
                         Err(format!(
                             "Line {curr_line_num}: the justification \
                                     ∃Intro:{n} is used, but line {curr_line_num} is not an \
-                                    existentially quantified sentence at the top level."
+                                    existentially quantified sentence at the top level"
                         ))
                     }
                 }
-                Justification::ExistsElim(_, (_, _)) => {
-                    todo!()
+                Justification::ExistsElim(n, (sb, se)) => {
+                    let ref_wff = self.get_wff_at_line(curr_line_num, *n)?;
+                    let (s_begin, s_end) = self.get_subproof_at_lines(curr_line_num, (*sb, *se))?;
+                    if let Wff::Exists(var, exists_ref_wff) = ref_wff {
+                        if let Some(bc_term @ Term::Atomic(bc)) =
+                            &s_begin.constant_between_square_brackets
+                        {
+                            if s_begin.sentence.is_none() {
+                                Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but line {sb} contains only a boxed constant; when using ∃Elim, it should contain both a boxed constant and a sentence"))
+                            } else {
+                                let mut subst_is_valid = false;
+                                if let Some((term1, term2)) = find_possible_trivial_substitution_wff(
+                                    exists_ref_wff,
+                                    s_begin.sentence.as_ref().unwrap(),
+                                ) {
+                                    subst_is_valid = apply_trivial_substitution_everywhere_to_wff(
+                                        exists_ref_wff,
+                                        (&term1, &term2),
+                                    ) == *s_begin.sentence.as_ref().unwrap()
+                                        && bc_term == &term2;
+                                }
+                                if **exists_ref_wff == *s_begin.sentence.as_ref().unwrap() {
+                                    subst_is_valid = true;
+                                }
+                                if subst_is_valid {
+                                    Ok(())
+                                } else {
+                                    Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but if one substitutes {bc} for all free occurences of {var} in the quantified part of the sentence in line {n}, one does not obtain the sentence found in line {sb}, but this should be the case"))
+                                }
+                            }
+                        } else {
+                            Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but the referenced subproof does not introduce a boxed constant."))
+                        }
+                    } else {
+                        Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but the sentence at line {n} is not an existentially quantified sentence at the top-level"))
+                    }
                 }
             }
         } else {
