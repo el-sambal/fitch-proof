@@ -246,6 +246,29 @@ impl Proof {
             all_boxeds: &HashSet<Term>,
             line_num: usize,
         ) -> Result<(), String> {
+            fn check_term_not_contain_out_of_scope_boxed_consts(
+                term: &Term,
+                curr_scope: &[Option<Term>],
+                all_boxeds: &HashSet<Term>,
+                line_num: usize,
+            ) -> Result<(), String> {
+                match term {
+                    Term::Atomic(_) => {
+                        if all_boxeds.contains(term)
+                            && !curr_scope.iter().filter_map(|x| x.as_ref()).any(|t| t == term)
+                        {
+                            Err(format!("Line {line_num}: it is not allowed to use a boxed constant outside the subproof that defines it"))
+                        } else {
+                            Ok(())
+                        }
+                    }
+                    Term::FuncApp(_, args) => args.iter().try_for_each(|a| {
+                        check_term_not_contain_out_of_scope_boxed_consts(
+                            a, curr_scope, all_boxeds, line_num,
+                        )
+                    }),
+                }
+            }
             match wff {
                 Wff::Bottom => Ok(()),
                 Wff::And(li) | Wff::Or(li) => li.iter().try_for_each(|w| {
@@ -279,32 +302,6 @@ impl Proof {
                 .and(check_term_not_contain_out_of_scope_boxed_consts(
                     t, curr_scope, all_boxeds, line_num,
                 )),
-            }
-        }
-
-        // if term contains a constant which is in the global set of boxed constants (all_boxeds), but not in
-        // the current scope, then return Err. Otherwise Ok.
-        fn check_term_not_contain_out_of_scope_boxed_consts(
-            term: &Term,
-            curr_scope: &[Option<Term>],
-            all_boxeds: &HashSet<Term>,
-            line_num: usize,
-        ) -> Result<(), String> {
-            match term {
-                Term::Atomic(_) => {
-                    if all_boxeds.contains(term)
-                        && !curr_scope.iter().filter_map(|x| x.as_ref()).any(|t| t == term)
-                    {
-                        Err(format!("Line {line_num}: it is not allowed to use a boxed constant outside the subproof that defines it"))
-                    } else {
-                        Ok(())
-                    }
-                }
-                Term::FuncApp(_, args) => args.iter().try_for_each(|a| {
-                    check_term_not_contain_out_of_scope_boxed_consts(
-                        a, curr_scope, all_boxeds, line_num,
-                    )
-                }),
             }
         }
 
