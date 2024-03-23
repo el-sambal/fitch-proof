@@ -1,4 +1,5 @@
 use crate::data::*;
+use std::collections::HashSet;
 use std::iter::zip;
 
 type Scope = Vec<(Vec<usize>, Vec<(usize, usize)>)>;
@@ -27,6 +28,7 @@ struct Proof {
     lines: Vec<ProofLine>,
     scope: Scope,
     units: Vec<ProofUnit>,
+    allowed_variable_names: HashSet<String>,
 }
 impl Proof {
     // Given a vector of ProofLines, this method constructs the proof. In case this method fails,
@@ -43,6 +45,12 @@ impl Proof {
             lines: proof_lines,
             scope,
             units,
+            allowed_variable_names: HashSet::from([
+                "x".to_string(),
+                "y".to_string(),
+                "z".to_string(),
+                "u".to_string(),
+            ]),
         })
     }
 
@@ -785,7 +793,15 @@ impl Proof {
                             ) == *curr_wff
                                 && Term::Atomic(var.to_string()) == term1
                             {
-                                return Ok(());
+                                return if self.is_closed_term(term2) {
+                                    Ok(())
+                                } else {
+                                    Err(format!(
+                                        "Line {curr_line_num}: the rule ∀Elim:{n} is used, \
+                                                but you did not substitute a *closed* term for \
+                                                all occurrences of the variable {var} in line {n}."
+                                    ))
+                                };
                             }
                         }
                         Err(format!(
@@ -814,7 +830,16 @@ impl Proof {
                                 (&term1, &term2),
                             ) && Term::Atomic(var.to_string()) == term1
                             {
-                                return Ok(());
+                                return if self.is_closed_term(term2) {
+                                    Ok(())
+                                } else {
+                                    Err(format!(
+                                        "Line {curr_line_num}: the rule ∃Intro:{n} is \
+                                                used, but the term in line {n} that you \
+                                                substitute {var} for in line {curr_line_num} \
+                                                is not a *closed* term."
+                                    ))
+                                };
                             }
                         }
                         if **exists_curr_wff == *ref_wff {
@@ -845,6 +870,27 @@ impl Proof {
                    but was not parsed as a premise... This \
                    should be impossible."
             );
+        }
+    }
+
+    fn term_is_constant(&self, term: Term) -> bool {
+        match term {
+            Term::FuncApp(..) => false,
+            Term::Atomic(str) => !self.allowed_variable_names.contains(&str),
+        }
+    }
+
+    fn term_is_variable(&self, term: Term) -> bool {
+        match term {
+            Term::FuncApp(..) => false,
+            Term::Atomic(str) => self.allowed_variable_names.contains(&str),
+        }
+    }
+
+    fn is_closed_term(&self, term: Term) -> bool {
+        match term {
+            Term::Atomic(str) => !self.allowed_variable_names.contains(&str),
+            Term::FuncApp(_, args) => args.iter().all(|a| self.is_closed_term(a.clone())),
         }
     }
 }
