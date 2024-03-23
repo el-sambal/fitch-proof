@@ -1211,44 +1211,31 @@ impl Proof {
                 Justification::ExistsElim(n, (sb, se)) => {
                     let ref_wff = self.get_wff_at_line(curr_line_num, *n)?;
                     let (s_begin, s_end) = self.get_subproof_at_lines(curr_line_num, (*sb, *se))?;
-                    if let Wff::Exists(var, exists_ref_wff) = ref_wff {
-                        if let Some(bc_term @ Term::Atomic(bc)) =
-                            &s_begin.constant_between_square_brackets
-                        {
-                            if s_begin.sentence.is_none() {
-                                Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but line {sb} contains only a boxed constant; when using ∃Elim, it should contain both a boxed constant and a sentence"))
-                            } else {
-                                let mut subst_is_valid = false;
-                                if let Some((term1, term2)) = find_possible_trivial_substitution_wff(
-                                    exists_ref_wff,
-                                    s_begin.sentence.as_ref().unwrap(),
-                                ) {
-                                    subst_is_valid = apply_trivial_substitution_everywhere_to_wff(
-                                        exists_ref_wff,
-                                        (&term1, &term2),
-                                    ) == *s_begin.sentence.as_ref().unwrap()
-                                        && bc_term == &term2;
-                                }
-                                if **exists_ref_wff == *s_begin.sentence.as_ref().unwrap() {
-                                    subst_is_valid = true;
-                                }
-                                if subst_is_valid {
-                                    if s_end.sentence.is_some()
-                                        && s_end.sentence.as_ref().unwrap() == curr_wff
-                                    {
-                                        Ok(())
-                                    } else {
-                                        Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but the sentence in line {se} is not the same as the sentence in line {curr_line_num}"))
-                                    }
-                                } else {
-                                    Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but if one substitutes {bc} for all free occurences of {var} in the quantified part of the sentence in line {n}, one does not obtain the sentence found in line {sb}, but this should be the case"))
-                                }
-                            }
+                    let Wff::Exists(var, exists_ref_wff) = ref_wff else {
+                        return Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but the sentence at line {n} is not an existentially quantified sentence at the top-level"));
+                    };
+
+                    let Some(bc_term @ Term::Atomic(bc)) =
+                        &s_begin.constant_between_square_brackets
+                    else {
+                        return Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but the referenced subproof does not introduce a boxed constant."));
+                    };
+
+                    if s_begin.sentence.is_none() {
+                        return Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but line {sb} contains only a boxed constant; when using ∃Elim, it should contain both a boxed constant and a sentence"));
+                    }
+                    if apply_trivial_substitution_everywhere_to_wff(
+                        exists_ref_wff,
+                        (&Term::Atomic(var.to_string()), &bc_term),
+                    ) == *s_begin.sentence.as_ref().unwrap()
+                    {
+                        if s_end.sentence.as_ref().unwrap() == curr_wff {
+                            Ok(())
                         } else {
-                            Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but the referenced subproof does not introduce a boxed constant."))
+                            Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but the sentence in line {se} is not the same as the sentence in line {curr_line_num}"))
                         }
                     } else {
-                        Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but the sentence at line {n} is not an existentially quantified sentence at the top-level"))
+                        Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but if one substitutes {bc} for all free occurences of {var} in the quantified part of the sentence in line {n}, one does not obtain the sentence found in line {sb}, but this should be the case"))
                     }
                 }
             }
