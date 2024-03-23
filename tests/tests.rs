@@ -395,3 +395,129 @@ fn test_multiple_exists_13() {
 
     assert!(!fitch_proof::proof_is_correct(proof));
 }
+#[test]
+fn test_forall_1() {
+    let proof = "
+1 | ∀x P(x)
+2 | ⊥
+  | ---
+3 | | [d]
+  | | --
+4 | | P(d)     ∀Elim:1
+5 | ∀x P(x)    ∀Intro:3-4
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_forall_2() {
+    let proof = "
+1 | ∀x P(x)
+2 | ⊥
+  | ---
+3 | | [d]
+  | | --
+4 | | P(d)     ∀Elim:1
+5 | ∀y P(y)    ∀Intro:3-4
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_forall_3() {
+    let proof = "
+1 | ∀x P(x)
+2 | ⊥
+  | ---
+3 | | [d]
+  | | --
+4 | | P(d)     ∀Elim:1
+5 | ∀y P(d)    ∀Intro:3-4
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_forall_4() {
+    let proof = "
+1 | ∀x P(x)
+2 | ⊥
+  | ---
+3 | | [d]
+  | | --
+4 | | P(d)     ∀Elim:1
+5 | ∀d P(y)    ∀Intro:3-4
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_forall_5() {
+    let proof = "
+1 | ∀x P(x)
+2 | ⊥
+  | ---
+3 | | [d]
+  | | --
+4 | | P(d)     ∀Elim:1
+5 | ∀d P(d)    ∀Intro:3-4
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_forall_6() {
+    let proof = "
+1 | ∀x P(x)
+2 | ⊥
+  | ---
+3 | | [d]
+  | | --
+4 | | d=d      =Intro
+5 | ∀x (x=x)    ∀Intro:3-4
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_forall_7() {
+    let proof = "
+1 | ∀x P(x)
+2 | ⊥
+  | ---
+3 | | [d]
+  | | --
+4 | | d=d      =Intro
+5 | ∀x (d=x)    ∀Intro:3-4
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_forall_8() {
+    let proof = "
+1 | ∀x P(x)
+2 | ⊥
+  | ---
+3 | | [c]
+  | | --
+4 | | d=d      =Intro
+5 | ∀x (x=x)    ∀Intro:3-4
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_forall_9() {
+    let proof = "
+1 | ∀x P(x)
+2 | ⊥
+  | ---
+3 | | [d] d=d
+  | | --
+4 | | d=d      =Intro
+5 | ∀x (x=x)    ∀Intro:3-4
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}

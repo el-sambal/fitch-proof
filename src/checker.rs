@@ -1108,8 +1108,28 @@ impl Proof {
                         ))
                     }
                 }
-                Justification::ForallIntro((_, _)) => {
-                    todo!()
+                Justification::ForallIntro((sb, se)) => {
+                    let Wff::Forall(var, forall_curr_wff) = curr_wff else {
+                        return Err(format!("Line {curr_line_num}: the rule ∀Intro is used, but this sentence is not universally quantified at the top-level"));
+                    };
+                    let (s_begin, s_end) = self.get_subproof_at_lines(curr_line_num, (*sb, *se))?;
+                    let Some(boxed_const @ Term::Atomic(bc)) =
+                        &s_begin.constant_between_square_brackets
+                    else {
+                        return Err(format!("Line {curr_line_num}: the rule ∀Intro is used, but the referenced subproof does not have a boxed constant"));
+                    };
+                    if s_begin.sentence.is_some() {
+                        return Err(format!("Line {curr_line_num}: when using ∀Intro, the premise of the referenced subproof should consist of solely a boxed constant, without a sentence"));
+                    }
+                    if apply_trivial_substitution_everywhere_to_wff(
+                        forall_curr_wff,
+                        (&Term::Atomic(var.to_string()), boxed_const),
+                    ) != *s_end.sentence.as_ref().unwrap()
+                    {
+                        return Err(format!("Line {curr_line_num}: the rule ∀Intro:{sb}-{se} is used, but if all occurrences of {var} in the quantified part of line {curr_line_num} are replaced by {bc}, then one does not obtain the sentence in line {se}, but this should be the case"));
+                    }
+
+                    Ok(())
                 }
                 Justification::ForallElim(n) => {
                     if let Wff::Forall(var, ref_wff) = self.get_wff_at_line(curr_line_num, *n)? {
