@@ -1,7 +1,6 @@
 use crate::data::*;
 use std::collections::HashSet;
 use std::iter::zip;
-use std::thread::current;
 
 type Scope = Vec<(Vec<usize>, Vec<(usize, usize)>)>;
 
@@ -1087,7 +1086,7 @@ impl Proof {
                     if let Wff::Equals(subst_old, subst_new) =
                         self.get_wff_at_line(curr_line_num, *m)?
                     {
-                        if substitution_has_been_applied_to_wff(
+                        if substitution_applied_wff_zero_or_more_times(
                             self.get_wff_at_line(curr_line_num, *n)?,
                             curr_wff,
                             (subst_old, subst_new),
@@ -1173,7 +1172,7 @@ impl Proof {
                         if let Some((term1, term2)) =
                             find_possible_trivial_substitution_wff(exists_curr_wff, ref_wff)
                         {
-                            if substitution_has_been_applied_to_wff(
+                            if substitution_applied_wff_zero_or_more_times(
                                 exists_curr_wff,
                                 ref_wff,
                                 (&term1, &term2),
@@ -1256,13 +1255,6 @@ impl Proof {
         }
     }
 
-    fn _term_is_variable(&self, term: Term) -> bool {
-        match term {
-            Term::FuncApp(..) => false,
-            Term::Atomic(str) => self.allowed_variable_names.contains(&str),
-        }
-    }
-
     fn is_closed_term(&self, term: Term) -> bool {
         match term {
             Term::Atomic(str) => !self.allowed_variable_names.contains(&str),
@@ -1273,7 +1265,7 @@ impl Proof {
 
 // returns true iff term b can be obtained from term a by applying
 // the substitution subst *zero or more* times.
-fn substitution_has_been_applied_to_term(a: &Term, b: &Term, subst: (&Term, &Term)) -> bool {
+fn substitution_applied_term_zero_or_more_times(a: &Term, b: &Term, subst: (&Term, &Term)) -> bool {
     match (&a, &b) {
         (Term::Atomic(a_name), Term::Atomic(b_name)) => a_name == b_name || subst == (a, b),
         (Term::Atomic(_), Term::FuncApp(..)) => subst == (a, b),
@@ -1282,7 +1274,7 @@ fn substitution_has_been_applied_to_term(a: &Term, b: &Term, subst: (&Term, &Ter
             (subst) == (a, b)
                 || (f1_name == f2_name
                     && zip(args1, args2).all(|(arg1, arg2)| {
-                        substitution_has_been_applied_to_term(arg1, arg2, subst)
+                        substitution_applied_term_zero_or_more_times(arg1, arg2, subst)
                     }))
             // it's almost Haskell <3
         }
@@ -1291,33 +1283,31 @@ fn substitution_has_been_applied_to_term(a: &Term, b: &Term, subst: (&Term, &Ter
 
 // returns true iff wff b can be obtained from wff a by applying
 // the substitution subst *zero or more* times.
-fn substitution_has_been_applied_to_wff(a: &Wff, b: &Wff, subst: (&Term, &Term)) -> bool {
+fn substitution_applied_wff_zero_or_more_times(a: &Wff, b: &Wff, subst: (&Term, &Term)) -> bool {
     match (&a, &b) {
-        (Wff::And(conjs1), Wff::And(conjs2)) => {
-            zip(conjs1, conjs2).all(|(c1, c2)| substitution_has_been_applied_to_wff(c1, c2, subst))
-        }
+        (Wff::And(conjs1), Wff::And(conjs2)) => zip(conjs1, conjs2)
+            .all(|(c1, c2)| substitution_applied_wff_zero_or_more_times(c1, c2, subst)),
         (Wff::And(_), _) => false,
 
-        (Wff::Or(disjs1), Wff::Or(disjs2)) => {
-            zip(disjs1, disjs2).all(|(d1, d2)| substitution_has_been_applied_to_wff(d1, d2, subst))
-        }
+        (Wff::Or(disjs1), Wff::Or(disjs2)) => zip(disjs1, disjs2)
+            .all(|(d1, d2)| substitution_applied_wff_zero_or_more_times(d1, d2, subst)),
         (Wff::Or(_), _) => false,
 
         (Wff::Implies(ante1, conseq1), Wff::Implies(ante2, conseq2)) => {
-            substitution_has_been_applied_to_wff(ante1, ante2, subst)
-                && substitution_has_been_applied_to_wff(conseq1, conseq2, subst)
+            substitution_applied_wff_zero_or_more_times(ante1, ante2, subst)
+                && substitution_applied_wff_zero_or_more_times(conseq1, conseq2, subst)
         }
         (Wff::Implies(..), _) => false,
 
-        (Wff::Not(w1), Wff::Not(w2)) => substitution_has_been_applied_to_wff(w1, w2, subst),
+        (Wff::Not(w1), Wff::Not(w2)) => substitution_applied_wff_zero_or_more_times(w1, w2, subst),
         (Wff::Not(..), _) => false,
 
         (Wff::Bottom, Wff::Bottom) => true,
         (Wff::Bottom, _) => false,
 
         (Wff::Equals(t11, t12), Wff::Equals(t21, t22)) => {
-            substitution_has_been_applied_to_term(t11, t21, subst)
-                && substitution_has_been_applied_to_term(t12, t22, subst)
+            substitution_applied_term_zero_or_more_times(t11, t21, subst)
+                && substitution_applied_term_zero_or_more_times(t12, t22, subst)
         }
         (Wff::Equals(..), _) => false,
 
@@ -1327,17 +1317,17 @@ fn substitution_has_been_applied_to_wff(a: &Wff, b: &Wff, subst: (&Term, &Term))
         (Wff::PredApp(p1, args1), Wff::PredApp(p2, args2)) => {
             p1 == p2
                 && zip(args1, args2)
-                    .all(|(t1, t2)| substitution_has_been_applied_to_term(t1, t2, subst))
+                    .all(|(t1, t2)| substitution_applied_term_zero_or_more_times(t1, t2, subst))
         }
         (Wff::PredApp(..), _) => false,
 
         (Wff::Forall(var1, wff1), Wff::Forall(var2, wff2)) => {
-            var1 == var2 && substitution_has_been_applied_to_wff(wff1, wff2, subst)
+            var1 == var2 && substitution_applied_wff_zero_or_more_times(wff1, wff2, subst)
         }
         (Wff::Forall(..), _) => false,
 
         (Wff::Exists(var1, wff1), Wff::Exists(var2, wff2)) => {
-            var1 == var2 && substitution_has_been_applied_to_wff(wff1, wff2, subst)
+            var1 == var2 && substitution_applied_wff_zero_or_more_times(wff1, wff2, subst)
         }
         (Wff::Exists(..), _) => false,
     }
