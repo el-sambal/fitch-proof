@@ -358,7 +358,9 @@ impl Proof {
                     bound_vars_in_scope,
                 )),
                 Wff::Forall(var, wff) | Wff::Exists(var, wff) => {
-                    if bound_vars_in_scope.contains(var) {
+                    if !proof.allowed_variable_names.contains(var) {
+                        Err(format!("Line {line_num}: you can only quantify over a variable, not over a constant."))
+                    } else if bound_vars_in_scope.contains(var) {
                         Err(format!(
                             "Line {line_num}: this line contains \
                                        two nested quantifiers over the same variable."
