@@ -1342,6 +1342,29 @@ fn apply_trivial_substitution_everywhere_to_wff(wff: &Wff, subst: (&Term, &Term)
         Term::FuncApp(..) => panic!("Substitution is not trivial"),
         Term::Atomic(_) => {}
     }
+
+    // applies a substitution everywhere and returns the resulting term.
+    // Note that this substitution must be trivial: that is, the substitution
+    // must be of the form <term1> -> <term2> where <term1> is an atomic term,
+    // i.e. a constant or variable, so not a function application.
+    fn apply_trivial_substitution_everywhere_to_term(term: &Term, subst: (&Term, &Term)) -> Term {
+        match subst.0 {
+            Term::FuncApp(..) => panic!("Substitution is not trivial"),
+            Term::Atomic(_) => {}
+        }
+
+        match term {
+            Term::FuncApp(f, args) => Term::FuncApp(
+                f.to_string(),
+                args.iter()
+                    .map(|arg| apply_trivial_substitution_everywhere_to_term(arg, subst))
+                    .collect(),
+            ),
+            Term::Atomic(_) if term == subst.0 => subst.1.clone(),
+            Term::Atomic(_) => term.clone(),
+        }
+    }
+
     match wff {
         Wff::And(li) => Wff::And(
             li.iter().map(|x| apply_trivial_substitution_everywhere_to_wff(x, subst)).collect(),
@@ -1375,28 +1398,6 @@ fn apply_trivial_substitution_everywhere_to_wff(wff: &Wff, subst: (&Term, &Term)
     }
 }
 
-// applies a substitution everywhere and returns the resulting term.
-// Note that this substitution must be trivial: that is, the substitution
-// must be of the form <term1> -> <term2> where <term1> is an atomic term,
-// i.e. a constant or variable, so not a function application.
-fn apply_trivial_substitution_everywhere_to_term(term: &Term, subst: (&Term, &Term)) -> Term {
-    match subst.0 {
-        Term::FuncApp(..) => panic!("Substitution is not trivial"),
-        Term::Atomic(_) => {}
-    }
-
-    match term {
-        Term::FuncApp(f, args) => Term::FuncApp(
-            f.to_string(),
-            args.iter()
-                .map(|arg| apply_trivial_substitution_everywhere_to_term(arg, subst))
-                .collect(),
-        ),
-        Term::Atomic(_) if term == subst.0 => subst.1.clone(),
-        Term::Atomic(_) => term.clone(),
-    }
-}
-
 // given two wffs, wff1 and wff2, this function tries to determine if there exists a *trivial*
 // substitution of the form A -> B where A is not equal to B such that wff2 can be
 // obtained from wff1 only by applying that substitution at
@@ -1407,6 +1408,17 @@ fn apply_trivial_substitution_everywhere_to_term(term: &Term, subst: (&Term, &Te
 // None, then you know for sure that there exists no trivial substitution that can convert wff1
 // into wff2 by applying it at least once.
 fn find_possible_trivial_substitution_wff(wff1: &Wff, wff2: &Wff) -> Option<(Term, Term)> {
+    fn find_possible_trivial_substitution_term(term1: &Term, term2: &Term) -> Option<(Term, Term)> {
+        if term1 == term2 {
+            None
+        } else if let Term::Atomic(..) = term1 {
+            Some((term1.clone(), term2.clone()))
+        } else if let (Term::FuncApp(_, args1), Term::FuncApp(_, args2)) = (term1, term2) {
+            zip(args1, args2).find_map(|(a1, a2)| find_possible_trivial_substitution_term(a1, a2))
+        } else {
+            None
+        }
+    }
     match (wff1, wff2) {
         (Wff::And(li1), Wff::And(li2)) => {
             zip(li1, li2).find_map(|(w1, w2)| find_possible_trivial_substitution_wff(w1, w2))
@@ -1447,26 +1459,5 @@ fn find_possible_trivial_substitution_wff(wff1: &Wff, wff2: &Wff) -> Option<(Ter
         (Wff::Equals(..), _) => None,
 
         (Wff::Bottom, _) => None,
-    }
-}
-
-// given two terms, term1 and term2, this function tries to determine if there exists a *trivial*
-// substitution of the form A -> B where A is not equal to B such that term2 can be
-// obtained from term1 only by applying that substitution at
-// least one time. If such a substitution exists, then this function returns it. If such a
-// substitution does not exist, then the return value of this function is undefined! So, if this
-// function returns some substitution, you should always check it yourself that it is actually
-// possible to obtain term2 from term1 by only applying the substitution. If this function returns
-// None, then you know for sure that there exists no trivial substitution that can convert term1
-// into term2 by applying it at least once.
-fn find_possible_trivial_substitution_term(term1: &Term, term2: &Term) -> Option<(Term, Term)> {
-    if term1 == term2 {
-        None
-    } else if let Term::Atomic(..) = term1 {
-        Some((term1.clone(), term2.clone()))
-    } else if let (Term::FuncApp(_, args1), Term::FuncApp(_, args2)) = (term1, term2) {
-        zip(args1, args2).find_map(|(a1, a2)| find_possible_trivial_substitution_term(a1, a2))
-    } else {
-        None
     }
 }
