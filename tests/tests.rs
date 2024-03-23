@@ -81,6 +81,19 @@ fn test_exists_stuff() {
 
 }
 #[test]
+fn test_exists_conclusion_does_not_match() {
+    let proof = "
+1 | ∃x P(x)
+  | --
+2 | | [c] P(c)
+  | | --
+3 | | ∃y P(y)     ∃Intro: 2
+4 | ∃z P(z)       ∃Elim: 1,2-3";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+
+}
+#[test]
 fn test_exists_no_boxed_const() {
     let proof = "
 1 | ∃x P(x)
