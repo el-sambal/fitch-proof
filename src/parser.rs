@@ -40,6 +40,7 @@ enum Token {
     And,
     Or,
     Implies,
+    Bicond,
     Not,
     Bottom,
     Comma,
@@ -66,6 +67,7 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
             '\u{2227}' => toks.push(Token::And),
             '\u{2228}' => toks.push(Token::Or),
             '\u{2192}' => toks.push(Token::Implies),
+            '\u{2194}' => toks.push(Token::Bicond),
             '\u{00AC}' => toks.push(Token::Not),
             ',' => toks.push(Token::Comma),
             '=' => toks.push(Token::Equals),
@@ -114,6 +116,7 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
 //          | <E2> and <E2> {and <E2>}
 //          | <E2> or <E2> {or <E2>}
 //          | <E2> implies <E2>
+//          | <E2> bicond <E2>
 //
 // <E2> ::=
 //            <E3>
@@ -162,6 +165,13 @@ fn parse_e1(toks: &[Token]) -> Option<(Wff, &[Token])> {
             Token::Implies => {
                 if let Some((wff2, rem_rem_toks)) = parse_e2(rem_toks.get(1..)?) {
                     return Some((Wff::Implies(Box::new(wff), Box::new(wff2)), rem_rem_toks));
+                }
+                None
+            }
+            // <E2> implies <E2>
+            Token::Bicond => {
+                if let Some((wff2, rem_rem_toks)) = parse_e2(rem_toks.get(1..)?) {
+                    return Some((Wff::Bicond(Box::new(wff), Box::new(wff2)), rem_rem_toks));
                 }
                 None
             }
@@ -330,6 +340,8 @@ fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
 //                      | Or Elim: <num>, <numrange> {, <numrange>}
 //                      | Implies Intro: <numrange>
 //                      | Implies Elim: <num>, <num>
+//                      | Bicond Intro: <numrange>, <numrange>
+//                      | Bicond Elim: <num>, <num>
 //                      | Not Intro: <numrange>
 //                      | Not Elim: <num>
 //                      | Equals Intro
@@ -554,6 +566,42 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
                 None
             }
         }
+        (Token::Bicond, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
+            if name == "Intro" =>
+        {
+            if let (
+                Token::Dash,
+                Token::Number(num2),
+                Token::Comma,
+                Token::Number(num3),
+                Token::Dash,
+                Token::Number(num4),
+                None,
+            ) = (
+                toks.get(4)?,
+                toks.get(5)?,
+                toks.get(6)?,
+                toks.get(7)?,
+                toks.get(8)?,
+                toks.get(9)?,
+                toks.get(10),
+            ) {
+                Some(Justification::BicondIntro((*num1, *num2), (*num3, *num4)))
+            } else {
+                None
+            }
+        }
+        (Token::Bicond, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
+            if name == "Elim" =>
+        {
+            if let (Token::Comma, Token::Number(num2), None) =
+                (toks.get(4)?, toks.get(5)?, toks.get(6))
+            {
+                Some(Justification::BicondElim(*num1, *num2))
+            } else {
+                None
+            }
+        }
         (Token::Not, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
@@ -586,9 +634,7 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
         {
             Some(Justification::BottomElim(*num))
         }
-        (Token::Equals, Token::Name(name), None, None)
-            if name == "Intro" =>
-        {
+        (Token::Equals, Token::Name(name), None, None) if name == "Intro" => {
             Some(Justification::EqualsIntro)
         }
         (Token::Equals, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))

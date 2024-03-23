@@ -276,12 +276,14 @@ impl Proof {
                         w, curr_scope, all_boxeds, line_num,
                     )
                 }),
-                Wff::Implies(a, b) => check_wff_not_contain_out_of_scope_boxed_consts(
-                    a, curr_scope, all_boxeds, line_num,
-                )
-                .and(check_wff_not_contain_out_of_scope_boxed_consts(
-                    b, curr_scope, all_boxeds, line_num,
-                )),
+                Wff::Implies(a, b) | Wff::Bicond(a, b) => {
+                    check_wff_not_contain_out_of_scope_boxed_consts(
+                        a, curr_scope, all_boxeds, line_num,
+                    )
+                    .and(check_wff_not_contain_out_of_scope_boxed_consts(
+                        b, curr_scope, all_boxeds, line_num,
+                    ))
+                }
                 Wff::Not(w) => check_wff_not_contain_out_of_scope_boxed_consts(
                     w, curr_scope, all_boxeds, line_num,
                 ),
@@ -333,7 +335,7 @@ impl Proof {
                 Wff::And(li) | Wff::Or(li) => li.iter().try_for_each(|x| {
                     check_variable_scoping_issues_helper(proof, x, line_num, bound_vars_in_scope)
                 }),
-                Wff::Implies(w1, w2) => {
+                Wff::Implies(w1, w2) | Wff::Bicond(w1, w2) => {
                     check_variable_scoping_issues_helper(proof, w1, line_num, bound_vars_in_scope)
                         .and(check_variable_scoping_issues_helper(
                             proof,
@@ -1000,6 +1002,12 @@ impl Proof {
                         ))
                     }
                 }
+                Justification::BicondIntro(..) => {
+                    todo!()
+                }
+                Justification::BicondElim(n, m) => {
+                    todo!()
+                }
                 Justification::NotIntro((n, m)) => {
                     let (s_begin, s_end) = self.get_subproof_at_lines(curr_line_num, (*n, *m))?;
                     if let Wff::Not(negated) = curr_wff {
@@ -1298,6 +1306,12 @@ fn substitution_applied_wff_zero_or_more_times(a: &Wff, b: &Wff, subst: (&Term, 
         }
         (Wff::Implies(..), _) => false,
 
+        (Wff::Bicond(w11, w12), Wff::Bicond(w21, w22)) => {
+            substitution_applied_wff_zero_or_more_times(w11, w21, subst)
+                && substitution_applied_wff_zero_or_more_times(w12, w22, subst)
+        }
+        (Wff::Bicond(..), _) => false,
+
         (Wff::Not(w1), Wff::Not(w2)) => substitution_applied_wff_zero_or_more_times(w1, w2, subst),
         (Wff::Not(..), _) => false,
 
@@ -1375,6 +1389,10 @@ fn apply_trivial_substitution_everywhere_to_wff(wff: &Wff, subst: (&Term, &Term)
             Box::new(apply_trivial_substitution_everywhere_to_wff(w1, subst)),
             Box::new(apply_trivial_substitution_everywhere_to_wff(w2, subst)),
         ),
+        Wff::Bicond(w1, w2) => Wff::Bicond(
+            Box::new(apply_trivial_substitution_everywhere_to_wff(w1, subst)),
+            Box::new(apply_trivial_substitution_everywhere_to_wff(w2, subst)),
+        ),
         Wff::Not(w1) => Wff::Not(Box::new(apply_trivial_substitution_everywhere_to_wff(w1, subst))),
         Wff::Bottom => Wff::Bottom,
         Wff::Forall(s, w) => Wff::Forall(
@@ -1434,6 +1452,12 @@ fn find_possible_trivial_substitution_wff(wff1: &Wff, wff2: &Wff) -> Option<(Ter
                 .or(find_possible_trivial_substitution_wff(c1, c2))
         }
         (Wff::Implies(..), _) => None,
+
+        (Wff::Bicond(w11, w12), Wff::Bicond(w21, w22)) => {
+            find_possible_trivial_substitution_wff(w11, w21)
+                .or(find_possible_trivial_substitution_wff(w12, w22))
+        }
+        (Wff::Bicond(..), _) => None,
 
         (Wff::Not(w1), Wff::Not(w2)) => find_possible_trivial_substitution_wff(w1, w2),
         (Wff::Not(..), _) => None,
