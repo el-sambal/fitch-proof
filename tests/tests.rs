@@ -521,3 +521,83 @@ fn test_forall_9() {
 
     assert!(!fitch_proof::proof_is_correct(proof));
 }
+#[test]
+fn test_exists_intro_zero_or_more_1() {
+    let proof = "
+1 | S(c,c,c)
+  | ----
+2 | ∃u S(c,c,c)   ∃Intro:1
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_exists_intro_zero_or_more_2() {
+    let proof = "
+1 | S(c,c,c)
+  | ----
+2 | ∃u S(u,c,c)   ∃Intro:1
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_exists_intro_zero_or_more_3() {
+    let proof = "
+1 | S(c,c,c)
+  | ----
+2 | ∃u S(u,c,u)   ∃Intro:1
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_exists_intro_zero_or_more_4() {
+    let proof = "
+1 | S(c,c,c)
+  | ----
+2 | ∃u S(u,u,u)   ∃Intro:1
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_exists_intro_zero_or_more_5() {
+    let proof = "
+1 | S(c,c,u)
+  | ----
+2 | ∃u S(c,c,c)   ∃Intro:1
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_exists_intro_zero_or_more_6() {
+    let proof = "
+1 | S(c,c,c)
+  | ----
+2 | ∃x S(c,c,c)   ∃Intro:1
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_exists_intro_zero_or_more_7() {
+    let proof = "
+1 | S(c,c,c)
+  | ----
+2 | ∃a S(c,c,c)   ∃Intro:1
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_exists_intro_zero_or_more_8() {
+    let proof = "
+1 | S(c,c,c)
+  | ----
+2 | ∃c S(c,c,c)   ∃Intro:1
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
