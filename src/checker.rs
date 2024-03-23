@@ -1,6 +1,7 @@
 use crate::data::*;
 use std::collections::HashSet;
 use std::iter::zip;
+use std::thread::current;
 
 type Scope = Vec<(Vec<usize>, Vec<(usize, usize)>)>;
 
@@ -17,7 +18,8 @@ pub fn check_proof(proof_lines: Vec<ProofLine>) -> ProofResult {
 #[derive(Debug)]
 enum ProofUnit {
     NumberedProofLineInference(usize),
-    NumberedProofLinePremise(usize),
+    NumberedProofLinePremiseWithoutBoxedConstant(usize),
+    NumberedProofLinePremiseWithBoxedConstant(usize),
     FitchBarLine,
     SubproofOpen,
     SubproofClose,
@@ -70,7 +72,8 @@ impl Proof {
                 }
                 ProofUnit::SubproofClose => {}
                 ProofUnit::NumberedProofLineInference(_) => {}
-                ProofUnit::NumberedProofLinePremise(num) => {
+                ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(num)
+                | ProofUnit::NumberedProofLinePremiseWithBoxedConstant(num) => {
                     if expect_justification {
                         res.push(num);
                     }
@@ -130,6 +133,10 @@ impl Proof {
                 .map(|r| r.unwrap_err()),
         );
 
+        if let Err(errs) = self.check_boxed_constant_outside_subproof() {
+            errors.extend(errs);
+        }
+
         if self.last_line_is_inside_subproof() {
             let lln = self.last_line_num();
             errors.push(format!("Line {lln}: last line of proof should not be inside subproof"));
@@ -140,6 +147,156 @@ impl Proof {
         } else {
             errors.sort();
             ProofResult::Error(errors)
+        }
+    }
+
+    // This function gives you the ProofLine at line number line_num. It does not care about who
+    // referenced this line, and scope issues and such, it just gives it to you. This function
+    // panics if the line number does not exist within the proof.
+    fn get_proofline_at_line_unsafe(&self, line_num: usize) -> &ProofLine {
+        self.lines.iter().find(|x| x.line_num.is_some() && x.line_num.unwrap() == line_num).unwrap()
+    }
+
+    fn check_boxed_constant_outside_subproof(&self) -> Result<(), Vec<String>> {
+        let mut errors: Vec<String> = vec![];
+
+        // step 1: check which boxed constants exist within the proof
+        let boxed_consts: HashSet<_> = self
+            .lines
+            .iter()
+            .filter_map(|line| line.constant_between_square_brackets.clone())
+            .collect();
+
+        // step 2: iterate over proof units and see if boxed constants only get used when allowed
+        // keep a stack of which boxed constants are in scope:
+        let mut currently_in_scope: Vec<Option<Term>> = vec![];
+        for i in 0..self.units.len() {
+            match self.units[i] {
+                ProofUnit::FitchBarLine => {}
+                ProofUnit::NumberedProofLinePremiseWithBoxedConstant(num) => {
+                    currently_in_scope.push(
+                        self.get_proofline_at_line_unsafe(num)
+                            .constant_between_square_brackets
+                            .clone(),
+                    );
+
+                    if let Some(wff) = &self.get_proofline_at_line_unsafe(num).sentence {
+                        match check_wff_not_contain_out_of_scope_boxed_consts(
+                            wff,
+                            &currently_in_scope,
+                            &boxed_consts,
+                            num,
+                        ) {
+                            Ok(_) => {}
+                            Err(err) => errors.push(err),
+                        }
+                    }
+                }
+                ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(num) => {
+                    currently_in_scope.push(None);
+
+                    let prfln = self.get_proofline_at_line_unsafe(num);
+                    if let Err(err) = check_wff_not_contain_out_of_scope_boxed_consts(
+                        prfln.sentence.as_ref().unwrap(),
+                        &currently_in_scope,
+                        &boxed_consts,
+                        num,
+                    ) {
+                        errors.push(err);
+                    }
+                }
+                ProofUnit::NumberedProofLineInference(num) => {
+                    let prfln = self.get_proofline_at_line_unsafe(num);
+                    if let Err(err) = check_wff_not_contain_out_of_scope_boxed_consts(
+                        prfln.sentence.as_ref().unwrap(),
+                        &currently_in_scope,
+                        &boxed_consts,
+                        num,
+                    ) {
+                        errors.push(err);
+                    }
+                }
+                ProofUnit::SubproofClose => {
+                    currently_in_scope.pop();
+                }
+                ProofUnit::SubproofOpen => {}
+            }
+        }
+
+        // if wff contains a *constant* which is in the global set of boxed constants (all_boxeds), but not in
+        // the current scope, then return Err. Otherwise Ok.
+        fn check_wff_not_contain_out_of_scope_boxed_consts(
+            wff: &Wff,
+            curr_scope: &[Option<Term>],
+            all_boxeds: &HashSet<Term>,
+            line_num: usize,
+        ) -> Result<(), String> {
+            match wff {
+                Wff::Bottom => Ok(()),
+                Wff::And(li) | Wff::Or(li) => li.iter().try_for_each(|w| {
+                    check_wff_not_contain_out_of_scope_boxed_consts(
+                        w, curr_scope, all_boxeds, line_num,
+                    )
+                }),
+                Wff::Implies(a, b) => check_wff_not_contain_out_of_scope_boxed_consts(
+                    a, curr_scope, all_boxeds, line_num,
+                )
+                .and(check_wff_not_contain_out_of_scope_boxed_consts(
+                    b, curr_scope, all_boxeds, line_num,
+                )),
+                Wff::Not(w) => check_wff_not_contain_out_of_scope_boxed_consts(
+                    w, curr_scope, all_boxeds, line_num,
+                ),
+                Wff::Forall(_, w) | Wff::Exists(_, w) => {
+                    check_wff_not_contain_out_of_scope_boxed_consts(
+                        w, curr_scope, all_boxeds, line_num,
+                    )
+                }
+                Wff::Atomic(_) => Ok(()),
+                Wff::PredApp(_, args) => args.iter().try_for_each(|t| {
+                    check_term_not_contain_out_of_scope_boxed_consts(
+                        t, curr_scope, all_boxeds, line_num,
+                    )
+                }),
+                Wff::Equals(s, t) => check_term_not_contain_out_of_scope_boxed_consts(
+                    s, curr_scope, all_boxeds, line_num,
+                )
+                .and(check_term_not_contain_out_of_scope_boxed_consts(
+                    t, curr_scope, all_boxeds, line_num,
+                )),
+            }
+        }
+
+        // if term contains a constant which is in the global set of boxed constants (all_boxeds), but not in
+        // the current scope, then return Err. Otherwise Ok.
+        fn check_term_not_contain_out_of_scope_boxed_consts(
+            term: &Term,
+            curr_scope: &[Option<Term>],
+            all_boxeds: &HashSet<Term>,
+            line_num: usize,
+        ) -> Result<(), String> {
+            match term {
+                Term::Atomic(_) => {
+                    if all_boxeds.contains(term)
+                        && !curr_scope.iter().filter_map(|x| x.as_ref()).any(|t| t == term)
+                    {
+                        Err(format!("Line {line_num}: it is not allowed to use a boxed constant outside the subproof that defines it"))
+                    } else {
+                        Ok(())
+                    }
+                }
+                Term::FuncApp(_, args) => args.iter().try_for_each(|a| {
+                    check_term_not_contain_out_of_scope_boxed_consts(
+                        a, curr_scope, all_boxeds, line_num,
+                    )
+                }),
+            }
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
         }
     }
 
@@ -265,7 +422,7 @@ impl Proof {
         }
         match units[0] {
             ProofUnit::FitchBarLine => {}
-            ProofUnit::NumberedProofLinePremise(_) => {}
+            ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(_) => {}
             _ => {
                 return Err("Error: proof should start with premises (or \
                 Fitch bar, if there are no premises)."
@@ -277,7 +434,7 @@ impl Proof {
                 ProofUnit::FitchBarLine => {
                     // in HALF-well-structured proofs, a Fitch bar line may be succeeded by:
                     //  - an inference
-                    //  - a premise (inference for which the user didn't write justification yet)
+                    //  - a premise without boxed constant (inference for which the user didn't write justification yet)
                     //  - a new subproof
                     //    and a proof MUST NOT end with a Fitch bar line.
                     if i + 1 == units.len() {
@@ -286,7 +443,7 @@ impl Proof {
                         match units[i + 1] {
                             ProofUnit::NumberedProofLineInference(_) => {}
                             ProofUnit::SubproofOpen => {}
-                            ProofUnit::NumberedProofLinePremise(_) => {}
+                            ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(_) => {}
                             _ => {
                                 return Err("Error: Fitch bars should be followed by \
                                            either a new subproof or an inference. \
@@ -305,7 +462,8 @@ impl Proof {
                             .to_string());
                     }
                     match units[i + 1] {
-                        ProofUnit::NumberedProofLinePremise(_) => {}
+                        ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(_)
+                        | ProofUnit::NumberedProofLinePremiseWithBoxedConstant(_) => {}
                         _ => {
                             return Err(
                                 "Error: the first line on any new subproof should be a premise."
@@ -325,7 +483,7 @@ impl Proof {
                 ProofUnit::SubproofClose => {
                     // in HALF-well-structured proofs, after a closed subproof there should be either:
                     //  - an inference
-                    //  - a premise (inference for which user didn't write justification yet)
+                    //  - a premise without boxed constant (inference for which user didn't write justification yet)
                     //  - a new subproof
                     //    and a proof MAY end directly after a closed subproof.
                     if i + 1 == units.len() {
@@ -338,7 +496,7 @@ impl Proof {
                         match units[i + 1] {
                             ProofUnit::NumberedProofLineInference(_) => {}
                             ProofUnit::SubproofOpen => {}
-                            ProofUnit::NumberedProofLinePremise(_) => {}
+                            ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(_) => {}
                             _ => {
                                 return Err("Error: after closing a subproof, either you \
                                      should open a new subproof or there should be \
@@ -353,35 +511,63 @@ impl Proof {
                     //  - the end of the subproof
                     //  - the opening of a new subproof
                     //  - another inference
-                    //  - a premise (i.e. in this case an inference without justification)
+                    //  - a premise without boxed constant (i.e. in this case an inference without justification)
                     //    and a proof MAY end directly after an inference.
                     if i + 1 < units.len() {
                         match units[i + 1] {
                             ProofUnit::NumberedProofLineInference(_)
                             | ProofUnit::SubproofOpen
                             | ProofUnit::SubproofClose => {}
-                            ProofUnit::NumberedProofLinePremise(_) => {}
+                            ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(_) => {}
                             ProofUnit::FitchBarLine => {
                                 return Err("Error: you cannot have a Fitch bar \
                                         after an inference. Maybe you are giving \
                                         justification for a premise?"
                                     .to_string());
                             }
+                            ProofUnit::NumberedProofLinePremiseWithBoxedConstant(_) =>{
+                                return Err("Error: a boxed constant can only be introduced in the premise of a subproof".to_owned())
+                            }
                         }
                     }
                 }
-                ProofUnit::NumberedProofLinePremise(_) => {
-                    // in HALF-well-structured proofs, after a premise there should be either:
+                ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(_) => {
+                    // in HALF-well-structured proofs, after a premise w/out b.c. there should be either:
                     //  - a Fitch bar line
-                    //  - another premise
+                    //  - another premise without boxed constant
                     //       (only at the beginning of the proof, but we already check for
                     //        that in the ProofUnit::SubproofOpen arm of this match expression)
                     //  - an inference
                     //  - a SubproofOpen
                     //  - a SubproofClose
-                    //    and a proof MAY end directly after a premise.
+                    //    and a proof MAY end directly after a premise without b.c.
                     //
-                    //    No restrictions: this code block is effectively empty
+                    if i + 1 < units.len() {
+                        match units[i+1] {
+                            ProofUnit::FitchBarLine | ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(_) | ProofUnit::NumberedProofLineInference(_) | ProofUnit::SubproofOpen | ProofUnit::SubproofClose => {}
+                            ProofUnit::NumberedProofLinePremiseWithBoxedConstant(_) => {
+                                return Err("Error: a boxed constant can only be introduced in the premise of a subproof".to_owned())
+                            }
+                        }
+                    }
+                }
+
+                ProofUnit::NumberedProofLinePremiseWithBoxedConstant(_) => {
+                    // in HALF-well-structured proofs, after a premise with b.c. there must be:
+                    //  - a Fitch bar line
+                    //    and a proof MUST NOT end directly after a premise with b.c.
+
+                    if i + 1 >= units.len() {
+                        return Err("Error: a proof cannot end with a premise.".to_owned());
+                    }
+                    match units[i + 1] {
+                        ProofUnit::FitchBarLine => {}
+                        _ => {
+                            return Err(
+                                "Error: after a premise, there should be a Fitch bar".to_owned()
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -391,7 +577,8 @@ impl Proof {
         let mut prev_num = 0;
         for unit in units {
             match unit {
-                ProofUnit::NumberedProofLinePremise(num)
+                ProofUnit::NumberedProofLinePremiseWithBoxedConstant(num)
+                | ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(num)
                 | ProofUnit::NumberedProofLineInference(num) => {
                     if *num != 1 + prev_num {
                         return Err(format!("Line numbers are wrong; discrepancy between line {prev_num} and {num}..."));
@@ -421,8 +608,10 @@ impl Proof {
                 return Err("Error: somewhere in this proof, there is an \'indentation/scope jump\' that is too big. You cannot open or close two subproofs in the same line.".to_string());
             }
             if let Some(line_num) = line.line_num {
-                if line.is_premise {
-                    units.push(ProofUnit::NumberedProofLinePremise(line_num));
+                if line.is_premise && line.constant_between_square_brackets.is_none() {
+                    units.push(ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(line_num));
+                } else if line.is_premise {
+                    units.push(ProofUnit::NumberedProofLinePremiseWithBoxedConstant(line_num));
                 } else {
                     units.push(ProofUnit::NumberedProofLineInference(line_num));
                 }
@@ -447,7 +636,7 @@ impl Proof {
         let last_line_number: usize = units
             .iter()
             .filter_map(|u| match u {
-                ProofUnit::NumberedProofLinePremise(num)
+                ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(num)
                 | ProofUnit::NumberedProofLineInference(num) => Some(*num),
                 _ => None,
             })
@@ -468,7 +657,15 @@ impl Proof {
                             if depth > 0 {
                                 depth -= 1;
                                 let subproof_begin;
-                                if let ProofUnit::NumberedProofLinePremise(s_begin) = units[j + 1] {
+                                if let ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(
+                                    s_begin,
+                                ) = units[j + 1]
+                                {
+                                    subproof_begin = s_begin;
+                                } else if let ProofUnit::NumberedProofLinePremiseWithBoxedConstant(
+                                    s_begin,
+                                ) = units[j + 1]
+                                {
                                     subproof_begin = s_begin;
                                 } else {
                                     panic!("This really should not happen. This is a mistake by the developer. Please contact me if you get this.");
@@ -485,16 +682,22 @@ impl Proof {
                                 units[j - 1]
                             {
                                 stack.push(subproof_end);
-                            } else if let ProofUnit::NumberedProofLinePremise(subproof_end) =
-                                units[j - 1]
+                            } else if let ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(
+                                subproof_end,
+                            ) = units[j - 1]
                             {
                                 stack.push(subproof_end);
-                            } else {
+                            } else if let ProofUnit::NumberedProofLinePremiseWithBoxedConstant(
+                                subproof_end,
+                            ) = units[j - 1]
+                            {
+                                stack.push(subproof_end);
+                            }else {
                                 panic!("This really should not happen. This is a mistake by the developer. Please contact me if you get this.");
                             }
                         }
-                        ProofUnit::NumberedProofLineInference(ref_num)
-                        | ProofUnit::NumberedProofLinePremise(ref_num) => {
+                        ProofUnit::NumberedProofLineInference(ref_num)| ProofUnit::NumberedProofLinePremiseWithBoxedConstant(ref_num)
+                        | ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(ref_num) => {
                             if depth == 0 {
                                 scope[num].0.push(ref_num);
                             }
@@ -1022,7 +1225,7 @@ impl Proof {
         }
     }
 
-    fn _term_is_constant(&self, term: Term) -> bool {
+    fn term_is_constant(&self, term: Term) -> bool {
         match term {
             Term::FuncApp(..) => false,
             Term::Atomic(str) => !self.allowed_variable_names.contains(&str),

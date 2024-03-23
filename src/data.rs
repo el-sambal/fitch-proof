@@ -1,4 +1,4 @@
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Hash, Eq)]
 pub enum Term {
     Atomic(String),             // a variable or a constant
     FuncApp(String, Vec<Term>), // function application

@@ -103,6 +103,17 @@ fn test_exists_no_boxed_const() {
     assert!(!fitch_proof::proof_is_correct(proof));
 }
 #[test]
+fn test_exists_no_boxed_variable() {
+    let proof = "
+1 | ∃x P(x)
+  | --
+2 | | [z] P(z)
+  | | --
+3 | | ∃y P(y)     ∃Intro: 2
+4 | ∃y P(y)       ∃Elim: 1,2-3";
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
 fn test_more_exists_stuff() {
     let proof = "
 1 | ∃x P(x)
