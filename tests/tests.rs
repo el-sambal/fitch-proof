@@ -149,3 +149,249 @@ fn test_boxed_constant_subproof() {
 
     assert!(!fitch_proof::proof_is_correct(proof));
 }
+#[test]
+fn test_multiple_exists_1() {
+    let proof = "
+1 | ∃x∃y P(x,y)
+2 | ⊥
+  | ------
+3 | | [a] ∃y P(a,y)
+  | | --
+4 | | | [b] P(a,b)
+  | | | --
+5 | | | ∃z P(a,z)         ∃Intro:4
+6 | | ∃z P(a,z)         ∃Elim:3,4-5
+7 | | ∃u∃z P(u,z)       ∃Intro:6
+8 |  ∃u∃z P(u,z)          ∃Elim:1,3-7
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_multiple_exists_2() {
+    let proof = "
+1 | ∃x∃y P(x,y)
+2 | ⊥
+  | ------
+3 | | [a] ∃y P(a,y)
+  | | --
+4 | | | [b] P(a,b)
+  | | | --
+5 | | | ∃z P(a,z)         ∃Intro:4
+6 | | ∃z P(a,z)         ∃Elim:3,4-5
+7 | | ∃u∃z P(u,z)       ∃Intro:6
+8 |  ∃u∃z P(u,z)          ∃Elim:1,3-7
+9 | a=a                =Intro
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_multiple_exists_3() {
+    let proof = "
+1 | ∃x∃y P(x,y)
+2 | ⊥
+  | ------
+3 | | [a] ∃y P(a,y)
+  | | --
+4 | | | [b] P(a,b)
+  | | | --
+5 | | | ∃z P(a,z)         ∃Intro:4
+6 | | ∃z P(a,z)         ∃Elim:3,4-5
+7 | | ∃u∃z P(u,z)       ∃Intro:6
+8 |  ∃u∃z P(u,z)          ∃Elim:1,3-7
+9 | b=b                =Intro
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_multiple_exists_4() {
+    let proof = "
+1 | ∃x∃y P(x,y)
+2 | ⊥
+  | ------
+3 | | [a] ∃y P(a,y)
+  | | --
+4 | | | [b] P(a,b)
+  | | | --
+5 | | | ∃z P(a,z)         ∃Intro:4
+6 | | ∃z P(a,z)         ∃Elim:3,4-5
+7 | | ∃u∃z P(u,z)       ∃Intro:6
+8 |  ∃u∃z P(u,z)          ∃Elim:1,3-7
+9 | a=b                ⊥Elim:2
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_multiple_exists_5() {
+    let proof = "
+1 | ∃x∃y P(x,y)
+2 | ⊥
+  | ------
+3 | | [a] ∃y P(a,y)
+  | | --
+4 | | | [b] P(a,b)
+  | | | --
+5 | | | ∃z P(a,z)         ∃Intro:4
+6 | | ∃z P(a,z)         ∃Elim:3,4-5
+7 | | ∃u∃z P(u,z)       ∃Intro:6
+8 | a=a                  =Intro
+9 |  ∃u∃z P(u,z)          ∃Elim:1,3-7
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_multiple_exists_6() {
+    let proof = "
+1 | ∃x∃y P(x,y)
+2 | ⊥
+  | ------
+3 | | [a] ∃y P(a,y)
+  | | --
+4 | | | [b] P(a,b)
+  | | | --
+5 | | | ∃z P(a,z)         ∃Intro:4
+6 | | a=a              =Intro
+7 | | ∃z P(a,z)         ∃Elim:3,4-5
+8 | | ∃u∃z P(u,z)       ∃Intro:7
+9 |  ∃u∃z P(u,z)          ∃Elim:1,3-8
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_multiple_exists_7() {
+    let proof = "
+1 | ∃x∃y P(x,y)
+2 | ⊥
+  | ------
+3 | | [a] ∃y P(a,y)
+  | | --
+4 | | | [b] P(a,b)
+  | | | --
+5 | | | ∃z P(a,z)         ∃Intro:4
+6 | | b=b              =Intro
+7 | | ∃z P(a,z)         ∃Elim:3,4-5
+8 | | ∃u∃z P(u,z)       ∃Intro:7
+9 |  ∃u∃z P(u,z)          ∃Elim:1,3-8
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_multiple_exists_8() {
+    let proof = "
+1 | ∃x∃y P(x,y)
+2 | ⊥
+  | ------
+3 | | [a] ∃y P(a,y)
+  | | --
+4 | | | [b] P(a,b)
+  | | | --
+5 | | | a=a         =Intro
+6 | | | ∃z P(a,z)         ∃Intro:4
+7 | | ∃z P(a,z)         ∃Elim:3,4-6
+8 | | ∃u∃z P(u,z)       ∃Intro:7
+9 |  ∃u∃z P(u,z)          ∃Elim:1,3-8
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_multiple_exists_9() {
+    let proof = "
+1 | ∃x∃y P(x,y)
+2 | ⊥
+  | ------
+3 | | [a] ∃y P(a,y)
+  | | --
+4 | | | [b] P(a,b)
+  | | | --
+5 | | | b=b         =Intro
+6 | | | ∃z P(a,z)         ∃Intro:4
+7 | | ∃z P(a,z)         ∃Elim:3,4-6
+8 | | ∃u∃z P(u,z)       ∃Intro:7
+9 |  ∃u∃z P(u,z)          ∃Elim:1,3-8
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_multiple_exists_10() {
+    let proof = "
+1 | ∃x∃y P(x,y)
+2 | ⊥
+  | ------
+3 | | [a] ∃y P(a,y)
+  | | --
+4 | | a=a                =Intro
+5 | | | [b] P(a,b)
+  | | | --
+6 | | | ∃z P(a,z)         ∃Intro:5
+7 | | ∃z P(a,z)         ∃Elim:3,5-6
+8 | | ∃u∃z P(u,z)       ∃Intro:7
+9 |  ∃u∃z P(u,z)          ∃Elim:1,3-8
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_multiple_exists_11() {
+    let proof = "
+1 | ∃x∃y P(x,y)
+2 | ⊥
+  | ------
+3 | | [a] ∃y P(a,y)
+  | | --
+4 | | b=b                =Intro
+5 | | | [b] P(a,b)
+  | | | --
+6 | | | ∃z P(a,z)         ∃Intro:5
+7 | | ∃z P(a,z)         ∃Elim:3,5-6
+8 | | ∃u∃z P(u,z)       ∃Intro:7
+9 |  ∃u∃z P(u,z)          ∃Elim:1,3-8
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_multiple_exists_12() {
+    let proof = "
+1 | ∃x∃y P(x,y)
+2 | ⊥
+3 | a=a
+  | ------
+4 | | [a] ∃y P(a,y)
+  | | --
+5 | | | [b] P(a,b)
+  | | | --
+6 | | | ∃z P(a,z)         ∃Intro:5
+7 | | ∃z P(a,z)         ∃Elim:4,5-6
+8 | | ∃u∃z P(u,z)       ∃Intro:7
+9 |  ∃u∃z P(u,z)          ∃Elim:1,4-8
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_multiple_exists_13() {
+    let proof = "
+1 | ∃x∃y P(x,y)
+2 | ⊥
+3 | b=b
+  | ------
+4 | | [a] ∃y P(a,y)
+  | | --
+5 | | | [b] P(a,b)
+  | | | --
+6 | | | ∃z P(a,z)         ∃Intro:5
+7 | | ∃z P(a,z)         ∃Elim:4,5-6
+8 | | ∃u∃z P(u,z)       ∃Intro:7
+9 |  ∃u∃z P(u,z)          ∃Elim:1,4-8
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
