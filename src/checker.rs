@@ -757,10 +757,12 @@ impl Proof {
                         ) {
                             Ok(())
                         } else {
-                            Err(format!("Line {curr_line_num}: the rule =Elim:{n},{m} \
+                            Err(format!(
+                                "Line {curr_line_num}: the rule =Elim:{n},{m} \
                             is used, but is is impossible to obtain line {curr_line_num} \
                             from line {n} by substituting some occurrences of <term1> by \
-                            <term2>, where line {m} is <term1> = <term2>."))
+                            <term2>, where line {m} is <term1> = <term2>."
+                            ))
                         }
                     } else {
                         Err(format!(
@@ -772,11 +774,65 @@ impl Proof {
                 Justification::ForallIntro((_, _)) => {
                     todo!()
                 }
-                Justification::ForallElim(_) => {
-                    todo!()
+                Justification::ForallElim(n) => {
+                    if let Wff::Forall(var, ref_wff) = self.get_wff_at_line(curr_line_num, *n)? {
+                        if let Some((term1, term2)) =
+                            find_possible_trivial_substitution_wff(ref_wff, curr_wff)
+                        {
+                            if apply_trivial_substitution_everywhere_to_wff(
+                                ref_wff,
+                                (&term1, &term2),
+                            ) == *curr_wff
+                                && Term::Atomic(var.to_string()) == term1
+                            {
+                                return Ok(());
+                            }
+                        }
+                        Err(format!(
+                            "Line {curr_line_num}: the rule \
+                                        ∀Elim:{n} is used, but there is no \
+                                        appropriate substitution between line \
+                                        {n} and line {curr_line_num}."
+                        ))
+                    } else {
+                        Err(format!(
+                            "Line {curr_line_num}: the justification \
+                                    ∀Elim:{n} is used, but line {n} is not a \
+                                    universally quantified sentence at the top level."
+                        ))
+                    }
                 }
-                Justification::ExistsIntro(_) => {
-                    todo!()
+                Justification::ExistsIntro(n) => {
+                    if let Wff::Exists(var, exists_curr_wff) = curr_wff {
+                        let ref_wff = self.get_wff_at_line(curr_line_num, *n)?;
+                        if let Some((term1, term2)) =
+                            find_possible_trivial_substitution_wff(exists_curr_wff, ref_wff)
+                        {
+                            if substitution_has_been_applied_to_wff(
+                                exists_curr_wff,
+                                ref_wff,
+                                (&term1, &term2),
+                            ) && Term::Atomic(var.to_string()) == term1
+                            {
+                                return Ok(());
+                            }
+                        }
+                        if **exists_curr_wff == *ref_wff {
+                            return Ok(());
+                        }
+                        Err(format!(
+                            "Line {curr_line_num}: the rule \
+                                        ∃Intro:{n} is used, but there is no \
+                                        appropriate substitution between line \
+                                        {n} and line {curr_line_num}."
+                        ))
+                    } else {
+                        Err(format!(
+                            "Line {curr_line_num}: the justification \
+                                    ∃Intro:{n} is used, but line {curr_line_num} is not an \
+                                    existentially quantified sentence at the top level."
+                        ))
+                    }
                 }
                 Justification::ExistsElim(_, (_, _)) => {
                     todo!()
@@ -862,5 +918,143 @@ fn substitution_has_been_applied_to_wff(a: &Wff, b: &Wff, subst: (&Term, &Term))
             var1 == var2 && substitution_has_been_applied_to_wff(wff1, wff2, subst)
         }
         (Wff::Exists(..), _) => false,
+    }
+}
+
+// applies a substitution everywhere and returns the resulting wff.
+// Note that this substitution must be trivial: that is, the substitution
+// must be of the form <term1> -> <term2> where <term1> is an atomic term,
+// i.e. a constant or variable, so not a function application.
+fn apply_trivial_substitution_everywhere_to_wff(wff: &Wff, subst: (&Term, &Term)) -> Wff {
+    match subst.0 {
+        Term::FuncApp(..) => panic!("Substitution is not trivial"),
+        Term::Atomic(_) => {}
+    }
+    match wff {
+        Wff::And(li) => Wff::And(
+            li.iter().map(|x| apply_trivial_substitution_everywhere_to_wff(x, subst)).collect(),
+        ),
+        Wff::Or(li) => Wff::Or(
+            li.iter().map(|x| apply_trivial_substitution_everywhere_to_wff(x, subst)).collect(),
+        ),
+        Wff::Implies(w1, w2) => Wff::Implies(
+            Box::new(apply_trivial_substitution_everywhere_to_wff(w1, subst)),
+            Box::new(apply_trivial_substitution_everywhere_to_wff(w2, subst)),
+        ),
+        Wff::Not(w1) => Wff::Not(Box::new(apply_trivial_substitution_everywhere_to_wff(w1, subst))),
+        Wff::Bottom => Wff::Bottom,
+        Wff::Forall(s, w) => Wff::Forall(
+            s.to_string(),
+            Box::new(apply_trivial_substitution_everywhere_to_wff(w, subst)),
+        ),
+        Wff::Exists(s, w) => Wff::Exists(
+            s.to_string(),
+            Box::new(apply_trivial_substitution_everywhere_to_wff(w, subst)),
+        ),
+        Wff::Equals(t1, t2) => Wff::Equals(
+            apply_trivial_substitution_everywhere_to_term(t1, subst),
+            apply_trivial_substitution_everywhere_to_term(t2, subst),
+        ),
+        Wff::PredApp(p, li) => Wff::PredApp(
+            p.to_string(),
+            li.iter().map(|x| apply_trivial_substitution_everywhere_to_term(x, subst)).collect(),
+        ),
+        Wff::Atomic(p) => Wff::Atomic(p.to_string()),
+    }
+}
+
+// applies a substitution everywhere and returns the resulting term.
+// Note that this substitution must be trivial: that is, the substitution
+// must be of the form <term1> -> <term2> where <term1> is an atomic term,
+// i.e. a constant or variable, so not a function application.
+fn apply_trivial_substitution_everywhere_to_term(term: &Term, subst: (&Term, &Term)) -> Term {
+    match subst.0 {
+        Term::FuncApp(..) => panic!("Substitution is not trivial"),
+        Term::Atomic(_) => {}
+    }
+
+    match term {
+        Term::FuncApp(f, args) => Term::FuncApp(
+            f.to_string(),
+            args.iter()
+                .map(|arg| apply_trivial_substitution_everywhere_to_term(arg, subst))
+                .collect(),
+        ),
+        Term::Atomic(_) if term == subst.0 => subst.1.clone(),
+        Term::Atomic(_) => term.clone(),
+    }
+}
+
+// given two wffs, wff1 and wff2, this function tries to determine if there exists a *trivial*
+// substitution of the form A -> B where A is not equal to B such that wff2 can be
+// obtained from wff1 only by applying that substitution at
+// least one time. If such a substitution exists, then this function returns it. If such a
+// substitution does not exist, then the return value of this function is undefined! So, if this
+// function returns some substitution, you should always check it yourself that it is actually
+// possible to obtain wff2 from wff1 by only applying the substitution. If this function returns
+// None, then you know for sure that there exists no trivial substitution that can convert wff1
+// into wff2 by applying it at least once.
+fn find_possible_trivial_substitution_wff(wff1: &Wff, wff2: &Wff) -> Option<(Term, Term)> {
+    match (wff1, wff2) {
+        (Wff::And(li1), Wff::And(li2)) => {
+            zip(li1, li2).find_map(|(w1, w2)| find_possible_trivial_substitution_wff(w1, w2))
+        }
+        (Wff::And(_), _) => None,
+
+        (Wff::Or(li1), Wff::Or(li2)) => {
+            zip(li1, li2).find_map(|(w1, w2)| find_possible_trivial_substitution_wff(w1, w2))
+        }
+        (Wff::Or(_), _) => None,
+
+        (Wff::Implies(a1, c1), Wff::Implies(a2, c2)) => {
+            find_possible_trivial_substitution_wff(a1, a2)
+                .or(find_possible_trivial_substitution_wff(c1, c2))
+        }
+        (Wff::Implies(..), _) => None,
+
+        (Wff::Not(w1), Wff::Not(w2)) => find_possible_trivial_substitution_wff(w1, w2),
+        (Wff::Not(..), _) => None,
+
+        (Wff::Forall(_, w1), Wff::Forall(_, w2)) => find_possible_trivial_substitution_wff(w1, w2),
+        (Wff::Forall(..), _) => None,
+
+        (Wff::Exists(_, w1), Wff::Exists(_, w2)) => find_possible_trivial_substitution_wff(w1, w2),
+        (Wff::Exists(..), _) => None,
+
+        (Wff::Atomic(_), _) => None,
+
+        (Wff::PredApp(_, args1), Wff::PredApp(_, args2)) => {
+            zip(args1, args2).find_map(|(a1, a2)| find_possible_trivial_substitution_term(a1, a2))
+        }
+        (Wff::PredApp(..), _) => None,
+
+        (Wff::Equals(t11, t12), Wff::Equals(t21, t22)) => {
+            find_possible_trivial_substitution_term(t11, t21)
+                .or(find_possible_trivial_substitution_term(t12, t22))
+        }
+        (Wff::Equals(..), _) => None,
+
+        (Wff::Bottom, _) => None,
+    }
+}
+
+// given two terms, term1 and term2, this function tries to determine if there exists a *trivial*
+// substitution of the form A -> B where A is not equal to B such that term2 can be
+// obtained from term1 only by applying that substitution at
+// least one time. If such a substitution exists, then this function returns it. If such a
+// substitution does not exist, then the return value of this function is undefined! So, if this
+// function returns some substitution, you should always check it yourself that it is actually
+// possible to obtain term2 from term1 by only applying the substitution. If this function returns
+// None, then you know for sure that there exists no trivial substitution that can convert term1
+// into term2 by applying it at least once.
+fn find_possible_trivial_substitution_term(term1: &Term, term2: &Term) -> Option<(Term, Term)> {
+    if term1 == term2 {
+        None
+    } else if let Term::Atomic(..) = term1 {
+        Some((term1.clone(), term2.clone()))
+    } else if let (Term::FuncApp(_, args1), Term::FuncApp(_, args2)) = (term1, term2) {
+        zip(args1, args2).find_map(|(a1, a2)| find_possible_trivial_substitution_term(a1, a2))
+    } else {
+        None
     }
 }

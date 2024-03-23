@@ -1,4 +1,4 @@
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Term {
     Atomic(String),             // a variable or a constant
     FuncApp(String, Vec<Term>), // function application
@@ -16,7 +16,7 @@ pub enum Wff {
     Exists(String, Box<Wff>),
     Atomic(String),             // a nullary predicate (proposition)
     PredApp(String, Vec<Term>), // n-ary predicate application (n >= 1)
-    Equals(Term, Term),         // the equality function applied to two terms
+    Equals(Term, Term),         // the equality predicate applied to two terms
 }
 
 #[derive(PartialEq, Debug)]
