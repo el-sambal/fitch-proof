@@ -116,6 +116,20 @@ impl Proof {
                 .map(|n| format!("Line {n}: missing justification").to_string()),
         );
 
+        errors.extend(
+            self.lines
+                .iter()
+                .filter(|line| line.sentence.is_some())
+                .map(|line| {
+                    self.check_variable_scoping_issues(
+                        line.sentence.as_ref().unwrap(),
+                        line.line_num.unwrap(),
+                    )
+                })
+                .filter(|r| r.is_err())
+                .map(|r| r.unwrap_err()),
+        );
+
         if self.last_line_is_inside_subproof() {
             let lln = self.last_line_num();
             errors.push(format!("Line {lln}: last line of proof should not be inside subproof"));
@@ -126,6 +140,87 @@ impl Proof {
         } else {
             errors.sort();
             ProofResult::Error(errors)
+        }
+    }
+
+    fn check_variable_scoping_issues(&self, wff: &Wff, line_num: usize) -> Result<(), String> {
+        self.check_variable_scoping_issues_helper(wff, line_num, &mut vec![])
+    }
+
+    fn check_variable_scoping_issues_helper(
+        &self,
+        wff: &Wff,
+        line_num: usize,
+        bound_vars_in_scope: &mut Vec<String>,
+    ) -> Result<(), String> {
+        match wff {
+            Wff::Bottom => Ok(()),
+            Wff::Atomic(_) => Ok(()),
+            Wff::PredApp(_, args) => {
+                args.iter()
+                    .try_for_each(|a| {
+                        self.check_variable_scoping_issues_helper_term(
+                            a,
+                            line_num,
+                            bound_vars_in_scope,
+                        )
+                    })
+            }
+            Wff::And(li) | Wff::Or(li) => li.iter().try_for_each(|x| {
+                self.check_variable_scoping_issues_helper(x, line_num, bound_vars_in_scope)
+            }),
+            Wff::Implies(w1, w2) => self
+                .check_variable_scoping_issues_helper(w1, line_num, bound_vars_in_scope)
+                .and(self.check_variable_scoping_issues_helper(w2, line_num, bound_vars_in_scope)),
+            Wff::Not(w) => {
+                self.check_variable_scoping_issues_helper(w, line_num, bound_vars_in_scope)
+            }
+            Wff::Equals(t1, t2) => {
+                if !self.is_closed_term(t1.clone()) || !self.is_closed_term(t2.clone()) {
+                    Err(format!("Line {line_num}: this line contains unbound variables."))
+                } else {
+                    Ok(())
+                }
+            }
+            Wff::Forall(var, wff) | Wff::Exists(var, wff) => {
+                if bound_vars_in_scope.contains(var) {
+                    Err(format!(
+                        "Line {line_num}: this line contains \
+                                       two nested quantifiers over the same variable."
+                    ))
+                } else {
+                    bound_vars_in_scope.push(var.to_string());
+                    let res = self.check_variable_scoping_issues_helper(
+                        wff,
+                        line_num,
+                        bound_vars_in_scope,
+                    );
+                    bound_vars_in_scope.pop();
+                    res
+                }
+            }
+        }
+    }
+
+    fn check_variable_scoping_issues_helper_term(
+        &self,
+        term: &Term,
+        line_num: usize,
+        bound_vars_in_scope: &mut Vec<String>,
+    ) -> Result<(), String> {
+        match term {
+            Term::Atomic(str) => {
+                if self.allowed_variable_names.contains(str) && !bound_vars_in_scope.contains(str) {
+                    Err(format!("Line {line_num}: this line contains unbound variables."))
+                } else {
+                    Ok(())
+                }
+            }
+            Term::FuncApp(_, args) => args
+                .iter()
+                .try_for_each(|a| {
+                    self.check_variable_scoping_issues_helper_term(a, line_num, bound_vars_in_scope)
+                }),
         }
     }
 
