@@ -167,7 +167,23 @@ impl Proof {
             .filter_map(|line| line.constant_between_square_brackets.clone())
             .collect();
 
-        // step 2: iterate over proof units and see if boxed constants only get used when allowed
+        // step 2: let's also give warnings if the user puts a variable in a box (not a constant)
+        errors.extend(
+            self.lines
+                .iter()
+                .filter(|line| line.constant_between_square_brackets.is_some())
+                .filter_map(|line| {
+                    if self.term_is_constant(
+                        line.constant_between_square_brackets.as_ref().unwrap().clone(),
+                    ) {
+                        None
+                    } else {
+                        Some(format!("Line {}: a boxed constant cannot be a variable (should not have the name of a variable).", line.line_num.unwrap()))
+                    }
+                }),
+        );
+
+        // step 3: iterate over proof units and see if boxed constants only get used when allowed
         // keep a stack of which boxed constants are in scope:
         let mut currently_in_scope: Vec<Option<Term>> = vec![];
         for i in 0..self.units.len() {
@@ -692,11 +708,12 @@ impl Proof {
                             ) = units[j - 1]
                             {
                                 stack.push(subproof_end);
-                            }else {
+                            } else {
                                 panic!("This really should not happen. This is a mistake by the developer. Please contact me if you get this.");
                             }
                         }
-                        ProofUnit::NumberedProofLineInference(ref_num)| ProofUnit::NumberedProofLinePremiseWithBoxedConstant(ref_num)
+                        ProofUnit::NumberedProofLineInference(ref_num)
+                        | ProofUnit::NumberedProofLinePremiseWithBoxedConstant(ref_num)
                         | ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(ref_num) => {
                             if depth == 0 {
                                 scope[num].0.push(ref_num);
