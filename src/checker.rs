@@ -982,14 +982,14 @@ impl Proof {
         }
     }
 
-    fn term_is_constant(&self, term: Term) -> bool {
+    fn _term_is_constant(&self, term: Term) -> bool {
         match term {
             Term::FuncApp(..) => false,
             Term::Atomic(str) => !self.allowed_variable_names.contains(&str),
         }
     }
 
-    fn term_is_variable(&self, term: Term) -> bool {
+    fn _term_is_variable(&self, term: Term) -> bool {
         match term {
             Term::FuncApp(..) => false,
             Term::Atomic(str) => self.allowed_variable_names.contains(&str),
