@@ -993,7 +993,13 @@ impl Proof {
                                     subst_is_valid = true;
                                 }
                                 if subst_is_valid {
-                                    Ok(())
+                                    if s_end.sentence.is_some()
+                                        && s_end.sentence.as_ref().unwrap() == curr_wff
+                                    {
+                                        Ok(())
+                                    } else {
+                                        Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but the sentence in line {se} is not the same as the sentence in line {curr_line_num}"))
+                                    }
                                 } else {
                                     Err(format!("Line {curr_line_num}: the rule ∃Elim:{n},{sb}-{se} is used, but if one substitutes {bc} for all free occurences of {var} in the quantified part of the sentence in line {n}, one does not obtain the sentence found in line {sb}, but this should be the case"))
                                 }

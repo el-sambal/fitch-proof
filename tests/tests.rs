@@ -65,7 +65,6 @@ fn test_random_stuff() {
 24| ¬(A∨ B)                           ¬Intro: 5-23";
 
     assert!(fitch_proof::proof_is_correct(proof));
-
 }
 #[test]
 fn test_exists_stuff() {
@@ -78,7 +77,6 @@ fn test_exists_stuff() {
 4 | ∃y P(y)       ∃Elim: 1,2-3";
 
     assert!(fitch_proof::proof_is_correct(proof));
-
 }
 #[test]
 fn test_exists_conclusion_does_not_match() {
@@ -91,7 +89,6 @@ fn test_exists_conclusion_does_not_match() {
 4 | ∃z P(z)       ∃Elim: 1,2-3";
 
     assert!(!fitch_proof::proof_is_correct(proof));
-
 }
 #[test]
 fn test_exists_no_boxed_const() {
@@ -104,7 +101,6 @@ fn test_exists_no_boxed_const() {
 4 | ∃y P(y)       ∃Elim: 1,2-3";
 
     assert!(!fitch_proof::proof_is_correct(proof));
-
 }
 #[test]
 fn test_more_exists_stuff() {
@@ -117,7 +113,6 @@ fn test_more_exists_stuff() {
 4 | ∃y P(y)       ∃Elim: 1,2-3";
 
     assert!(!fitch_proof::proof_is_correct(proof));
-
 }
 #[test]
 fn test_exists_stuff_wrong_constant_in_box() {
@@ -130,7 +125,6 @@ fn test_exists_stuff_wrong_constant_in_box() {
 4 | ∃y P(y)       ∃Elim: 1,2-3";
 
     assert!(!fitch_proof::proof_is_correct(proof));
-
 }
 #[test]
 fn test_boxed_constant_subproof() {
@@ -143,5 +137,4 @@ fn test_boxed_constant_subproof() {
 4 | P(c)       ∃Elim: 1,2-3";
 
     assert!(!fitch_proof::proof_is_correct(proof));
-
 }
