@@ -179,7 +179,8 @@ fn parse_e1(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
             Token::And => {
                 let mut conjs: Vec<Wff> = vec![wff];
                 while !rem_toks.is_empty() && rem_toks[0] == Token::And {
-                    if let Ok((new_wff, rem_rem_toks)) = parse_e2(rem_toks.get(1..).unwrap_or(&[])) {
+                    if let Ok((new_wff, rem_rem_toks)) = parse_e2(rem_toks.get(1..).unwrap_or(&[]))
+                    {
                         rem_toks = rem_rem_toks;
                         conjs.push(new_wff);
                     } else {
@@ -192,7 +193,8 @@ fn parse_e1(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
             Token::Or => {
                 let mut disjs: Vec<Wff> = vec![wff];
                 while !rem_toks.is_empty() && rem_toks[0] == Token::Or {
-                    if let Ok((new_wff, rem_rem_toks)) = parse_e2(rem_toks.get(1..).unwrap_or(&[])) {
+                    if let Ok((new_wff, rem_rem_toks)) = parse_e2(rem_toks.get(1..).unwrap_or(&[]))
+                    {
                         rem_toks = rem_rem_toks;
                         disjs.push(new_wff);
                     } else {
@@ -229,8 +231,7 @@ fn parse_e2(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
 
 fn parse_e3(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
     if toks.first().is_none() {
-        return 
-                Err(format!("TODO_ERR 73"));
+        return Err(format!("TODO_ERR 73"));
     }
     match toks.first().unwrap() {
         Token::Name(name) if name.chars().next().unwrap().is_uppercase() => {
@@ -256,7 +257,7 @@ fn parse_e3(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
             Err(format!("TODO_ERR 32"))
         }
         Token::Forall => match toks.get(1) {
-            Some(Token::Name(name) )if name.chars().next().unwrap().is_lowercase() => {
+            Some(Token::Name(name)) if name.chars().next().unwrap().is_lowercase() => {
                 if let Ok((wff, rem_toks)) = parse_e3(&toks[2..]) {
                     return Ok((Wff::Forall(name.to_owned(), Box::new(wff)), rem_toks));
                 }
@@ -280,7 +281,7 @@ fn parse_e3(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
 
 fn parse_term(toks: &[Token]) -> Result<(Term, &[Token]), String> {
     match toks.first() {
-        Some(Token::Name(name) )=> {
+        Some(Token::Name(name)) => {
             if let Ok((terms, rem_toks)) = parse_arg_list(&toks[1..]) {
                 Ok((Term::FuncApp(name.to_string(), terms), rem_toks))
             } else {
@@ -502,52 +503,64 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
 
 fn parse_justification(toks: &[Token]) -> Result<Justification, String> {
     if toks.first().is_none() || toks.get(1).is_none() {
-        return Err(format!("TODO_ERR 54"));
+        return Err("failure when parsing justification; it seems not to be there?".to_string());
     }
-    match (toks.first().unwrap(), toks.get(1).unwrap(), toks.get(2), toks.get(3)) {
+    match (&toks[0], &toks[1], toks.get(2), toks.get(3)) {
         (Token::Name(name), Token::Colon, Some(Token::Number(num)), None) if name == "Reit" => {
             Ok(Justification::Reit(*num))
         }
         (Token::And, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Intro" =>
         {
+            let err_str = "failed to parse ∧Intro justification. It should be of this form: ∧Intro:<num>,<num>{,<num>}".to_string();
             let mut nums: Vec<usize> = vec![*num];
             let mut i = 4;
             while toks.get(i).is_some() {
                 if toks[i] == Token::Comma {
                     if toks.get(i + 1).is_none() {
-                        return Err(format!("TODO_ERR 55"));
+                        return Err(err_str);
                     }
                     if let Token::Number(next_num) = toks.get(i + 1).unwrap() {
                         nums.push(*next_num);
                     } else {
-                        return Err(format!("TODO_ERR 14"));
+                        return Err(err_str);
                     }
                 } else {
-                    return Err(format!("TODO_ERR 15"));
+                    return Err(err_str);
                 }
                 i += 2;
             }
             Ok(Justification::AndIntro(nums))
         }
         (Token::And, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
-            if name == "Elim" && toks.get(4).is_none() =>
+            if name == "Elim" =>
         {
-            Ok(Justification::AndElim(*num))
+            if toks.get(4).is_none() {
+                Ok(Justification::AndElim(*num))
+            } else {
+                Err("failed to parse ∧Elim justification. It should be of this form: ∧Elim:<num>"
+                    .to_string())
+            }
         }
         (Token::Or, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
-            if name == "Intro" && toks.get(4).is_none() =>
+            if name == "Intro" =>
         {
-            Ok(Justification::OrIntro(*num))
+            if toks.get(4).is_none() {
+                Ok(Justification::OrIntro(*num))
+            } else {
+                Err("failed to parse ∨Intro justification. It should be of this form: ∨Intro:<num>"
+                    .to_string())
+            }
         }
         (Token::Or, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Elim" =>
         {
+            let err_str = "failed to parse ∨Elim justification. It should be of this form: ∨Elim:<num>,<num>-<num>,<num>-<num>{,<num>-<num>}".to_string();
             let mut num_pairs: Vec<(usize, usize)> = vec![];
             let mut i = 4;
             if toks.get(i).is_none() {
                 // should be at least one num-range provided
-                return Err(format!("TODO_ERR 56"));
+                return Err(err_str);
             };
             while toks.get(i).is_some() {
                 if toks[i] == Token::Comma {
@@ -555,7 +568,7 @@ fn parse_justification(toks: &[Token]) -> Result<Justification, String> {
                         || toks.get(i + 2).is_none()
                         || toks.get(i + 3).is_none()
                     {
-                        return Err(format!("TODO_ERR 57"));
+                        return Err(err_str);
                     }
                     if let (Token::Number(next_num1), Token::Dash, Token::Number(next_num2)) = (
                         toks.get(i + 1).unwrap(),
@@ -564,10 +577,10 @@ fn parse_justification(toks: &[Token]) -> Result<Justification, String> {
                     ) {
                         num_pairs.push((*next_num1, *next_num2));
                     } else {
-                        return Err(format!("TODO_ERR 58"));
+                        return Err(err_str);
                     }
                 } else {
-                    return Err(format!("TODO_ERR 59"));
+                    return Err(err_str);
                 }
                 i += 4;
             }
@@ -576,97 +589,122 @@ fn parse_justification(toks: &[Token]) -> Result<Justification, String> {
         (Token::Implies, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
+            let err_str = "failed to parse →Intro justification. It should be of this form: →Intro:<num>-<num>".to_string();
             if toks.len() != 6 {
-                return Err(format!("TODO_ERR 60"));
+                return Err(err_str);
             }
             if let (Token::Dash, Token::Number(num2)) = (toks.get(4).unwrap(), toks.get(5).unwrap())
             {
                 Ok(Justification::ImpliesIntro((*num1, *num2)))
             } else {
-                Err(format!("TODO_ERR 13"))
+                Err(err_str)
             }
         }
         (Token::Implies, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Elim" =>
         {
+            let err_str =
+                "failed to parse →Elim justification. It should be of this form: →Elim:<num>,<num>"
+                    .to_string();
             if toks.len() != 6 {
-                Err(format!("TODO_ERR 70"))
+                Err(err_str)
             } else if let [Token::Comma, Token::Number(num2)] = &toks[4..6] {
                 Ok(Justification::ImpliesElim(*num1, *num2))
             } else {
-                Err(format!("TODO_ERR 12"))
+                Err(err_str)
             }
         }
         (Token::Bicond, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
+            let err_str = "failed to parse ↔Intro justification. It should be of this form: ↔Intro:<num>-<num>,<num>-<num>".to_string();
             if toks.len() != 10 {
-                Err(format!("TODO_ERR 68"))
+                Err(err_str)
             } else if let [Token::Dash, Token::Number(num2), Token::Comma, Token::Number(num3), Token::Dash, Token::Number(num4)] =
                 &toks[4..10]
             {
                 Ok(Justification::BicondIntro((*num1, *num2), (*num3, *num4)))
             } else {
-                Err(format!("TODO_ERR 11"))
+                Err(err_str)
             }
         }
         (Token::Bicond, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Elim" =>
         {
+            let err_str =
+                "failed to parse ↔Elim justification. It should be of this form: ↔Elim:<num>,<num>"
+                    .to_string();
             if toks.len() != 6 {
-                Err(format!("TODO_ERR 67"))
+                Err(err_str)
             } else if let (Token::Comma, Token::Number(num2)) = (&toks[4], &toks[5]) {
                 Ok(Justification::BicondElim(*num1, *num2))
             } else {
-                Err(format!("TODO_ERR 10"))
+                Err(err_str)
             }
         }
         (Token::Not, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
+            let err_str = "failed to parse ¬Intro justification. It should be of this form: ¬Intro:<num>-<num>".to_string();
             if toks.len() != 6 {
-                Err(format!("TODO_ERR 67"))
+                Err(err_str)
             } else if let (Token::Dash, Token::Number(num2)) = (&toks[4], &toks[5]) {
                 Ok(Justification::NotIntro((*num1, *num2)))
             } else {
-                Err(format!("TODO_ERR 9"))
+                Err(err_str)
             }
         }
         (Token::Not, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
-            if name == "Elim" && toks.get(4).is_none() =>
+            if name == "Elim" =>
         {
-            Ok(Justification::NotElim(*num))
+            if toks.get(4).is_none() {
+                Ok(Justification::NotElim(*num))
+            } else {
+                Err("failed to parse ¬Elim justification. It should be of this form: ¬Elim:<num>"
+                    .to_string())
+            }
         }
         (Token::Bottom, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
+            let err_str = "failed to parse ⊥Intro justification. It should be of this form: ⊥Intro:<num>,<num>".to_string();
             if toks.len() != 6 {
-                Err(format!("TODO_ERR 66"))
+                Err(err_str)
             } else if let (Token::Comma, Token::Number(num2)) = (&toks[4], &toks[5]) {
                 Ok(Justification::BottomIntro(*num1, *num2))
             } else {
-                Err(format!("TODO_ERR 8"))
+                Err(err_str)
             }
         }
         (Token::Bottom, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
-            if name == "Elim" && toks.get(4).is_none() =>
+            if name == "Elim" =>
         {
-            Ok(Justification::BottomElim(*num))
+            if toks.get(4).is_none() {
+                Ok(Justification::BottomElim(*num))
+            } else {
+                Err("failed to parse ⊥Elim justification. It should be of this form: ⊥Elim:<num>"
+                    .to_string())
+            }
         }
-        (Token::Equals, Token::Name(name), None, None) if name == "Intro" => {
-            Ok(Justification::EqualsIntro)
+        (Token::Equals, Token::Name(name), ..) if name == "Intro" => {
+            if toks.len() == 2 {
+                Ok(Justification::EqualsIntro)
+            } else {
+                Err("failed to parse =Intro justification. This proof rule goes without colon and without line references, so all you write is just \'=Intro\'".to_string())
+            }
         }
         (Token::Equals, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Elim" =>
         {
+            let err_str = "failed to parse =Elim justification. It should be of this form: =Elim:<num>,<num>".to_string();
             if toks.len() != 6 {
-                Err(format!("TODO_ERR 65"))
+                Err(err_str)
             } else if let (Token::Comma, Token::Number(num2)) =
                 (toks.get(4).unwrap(), toks.get(5).unwrap())
             {
                 Ok(Justification::EqualsElim(*num1, *num2))
             } else {
-                Err(format!("TODO_ERR 7"))
+                Err(err_str)
             }
         }
         (Token::Forall, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
@@ -685,18 +723,29 @@ fn parse_justification(toks: &[Token]) -> Result<Justification, String> {
         (Token::Forall, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Elim" && toks.get(4).is_none() =>
         {
-            Ok(Justification::ForallElim(*num))
+            if toks.get(4).is_none() {
+                Ok(Justification::ForallElim(*num))
+            } else {
+                Err("failed to parse ∀Elim justification. It should be of this form: ∀Elim:<num>"
+                    .to_string())
+            }
         }
         (Token::Exists, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Intro" && toks.get(4).is_none() =>
         {
-            Ok(Justification::ExistsIntro(*num))
+            if toks.get(4).is_none() {
+                Ok(Justification::ExistsIntro(*num))
+            } else {
+                Err("failed to parse ∃Intro justification. It should be of this form: ∃Intro:<num>"
+                    .to_string())
+            }
         }
         (Token::Exists, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Elim" =>
         {
+            let err_str = "failed to parse ∃Elim justification. It should be of this form: ∃Elim:<num>,<num>-<num>".to_string();
             if toks.len() != 8 {
-                Err(format!("TODO_ERR 63"))
+                Err(err_str)
             } else if let (Token::Comma, Token::Number(num2), Token::Dash, Token::Number(num3)) = (
                 toks.get(4).unwrap(),
                 toks.get(5).unwrap(),
@@ -705,10 +754,10 @@ fn parse_justification(toks: &[Token]) -> Result<Justification, String> {
             ) {
                 Ok(Justification::ExistsElim(*num1, (*num2, *num3)))
             } else {
-                Err(format!("TODO_ERR 4"))
+                Err(err_str)
             }
         }
-        _ => Err(format!("TODO_ERR 5")),
+        _ => Err("failed to parse justification. Note that the proper capitalization is \'Intro\'/\'Elim\'/\'Reit\'.".to_string()),
     }
 }
 
@@ -1031,13 +1080,25 @@ mod tests {
             parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48").unwrap()),
             Ok(Justification::OrElim(42, vec![(43, 44), (45, 46), (47, 48)]))
         );
-        assert!(parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47,48").unwrap()).is_err());
-        assert!(parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46-47-48").unwrap()).is_err());
-        assert!(parse_justification(&lex_logical_expr("∨Elim:42-43-44,45-46,47-48").unwrap()).is_err());
-        assert!(parse_justification(&lex_logical_expr("∨Elim-42,43-44,45-46,47-48").unwrap()).is_err());
-        assert!(parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,").unwrap()).is_err());
-        assert!(parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,49").unwrap()).is_err());
-        assert!(parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,49-").unwrap()).is_err());
+        assert!(
+            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47,48").unwrap()).is_err()
+        );
+        assert!(
+            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46-47-48").unwrap()).is_err()
+        );
+        assert!(
+            parse_justification(&lex_logical_expr("∨Elim:42-43-44,45-46,47-48").unwrap()).is_err()
+        );
+        assert!(
+            parse_justification(&lex_logical_expr("∨Elim-42,43-44,45-46,47-48").unwrap()).is_err()
+        );
+        assert!(
+            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,").unwrap()).is_err()
+        );
+        assert!(parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,49").unwrap())
+            .is_err());
+        assert!(parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,49-").unwrap())
+            .is_err());
         assert!(parse_justification(&lex_logical_expr("∨Elim:42").unwrap()).is_err());
     }
     #[test]
@@ -1077,22 +1138,22 @@ mod tests {
     #[test]
     fn test_parser_bug_infinite_loop_1() {
         let toks = lex_logical_expr("(f(g(a),=b)").unwrap();
-        let _=parse_e2(&toks);
+        let _ = parse_e2(&toks);
     }
 
     #[test]
     fn test_parser_bug_infinite_loop_2() {
         let toks = lex_logical_expr("f(g(a),=b").unwrap();
-        let _=parse_e1(&toks);
+        let _ = parse_e1(&toks);
     }
     #[test]
     fn test_parser_bug_infinite_loop_3() {
         let toks = lex_logical_expr("f(g(a),=b").unwrap();
-       let _= parse_term(&toks);
+        let _ = parse_term(&toks);
     }
     #[test]
     fn test_parser_bug_infinite_loop_4() {
         let toks = lex_logical_expr("(g(a),=b").unwrap();
-     let _=   parse_arg_list(&toks);
+        let _ = parse_arg_list(&toks);
     }
 }
