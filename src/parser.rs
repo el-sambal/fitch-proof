@@ -226,12 +226,12 @@ fn parse_e2(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
         }
     }
 
-    Err(format!("TODO_ERR 34"))
+    Err(format!("when parsing logical expression: expected either <term>=<term> or a logical expression, but found neither"))
 }
 
 fn parse_e3(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
     if toks.first().is_none() {
-        return Err(format!("TODO_ERR 73"));
+        return Err(format!("logical expression is not complete"));
     }
     match toks.first().unwrap() {
         Token::Name(name) if name.chars().next().unwrap().is_uppercase() => {
@@ -242,40 +242,42 @@ fn parse_e3(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
             }
         }
         Token::Not => {
-            if let Ok((wff, rem_toks)) = parse_e3(&toks[1..]) {
-                Ok((Wff::Not(Box::new(wff)), rem_toks))
-            } else {
-                Err(format!("TODO_ERR 33"))
-            }
+            let (wff, rem_toks) = parse_e3(&toks[1..])?;
+            Ok((Wff::Not(Box::new(wff)), rem_toks))
         }
         Token::LPar => {
-            if let Ok((wff, rem_toks)) = parse_e1(&toks[1..]) {
-                if rem_toks.first().unwrap_or(&Token::Bottom) == &Token::RPar {
-                    return Ok((wff, &rem_toks[1..]));
-                }
+            let (wff, rem_toks) = parse_e1(&toks[1..])?;
+            if rem_toks.first().unwrap_or(&Token::Bottom) == &Token::RPar {
+                Ok((wff, &rem_toks[1..]))
+            } else {
+                Err("when parsing logical expression: closing bracket expected, but not found."
+                    .to_string())
             }
-            Err(format!("TODO_ERR 32"))
         }
         Token::Forall => match toks.get(1) {
             Some(Token::Name(name)) if name.chars().next().unwrap().is_lowercase() => {
-                if let Ok((wff, rem_toks)) = parse_e3(&toks[2..]) {
-                    return Ok((Wff::Forall(name.to_owned(), Box::new(wff)), rem_toks));
-                }
-                Err(format!("TODO_ERR 31"))
+                let (wff, rem_toks) = parse_e3(&toks[2..])?;
+                Ok((Wff::Forall(name.to_owned(), Box::new(wff)), rem_toks))
             }
-            _ => Err(format!("TODO_ERR 30")),
+            _ => Err("when parsing a forall: expected the name of a variable to quantify \
+                      over, got something else. Note that variables start with lowercase letters"
+                .to_string()),
         },
         Token::Exists => match toks.get(1) {
             Some(Token::Name(name)) if name.chars().next().unwrap().is_lowercase() => {
-                if let Ok((wff, rem_toks)) = parse_e3(&toks[2..]) {
-                    return Ok((Wff::Exists(name.to_owned(), Box::new(wff)), rem_toks));
-                }
-                Err(format!("TODO_ERR 29"))
+                let (wff, rem_toks) = parse_e3(&toks[2..])?;
+                Ok((Wff::Exists(name.to_owned(), Box::new(wff)), rem_toks))
             }
-            _ => Err(format!("TODO_ERR 28")),
+            _ => Err("when parsing an exists: expected the name of a variable to quantify \
+                      over, got something else. Note that variables start with lowercase letters"
+                .to_string()),
         },
         Token::Bottom => Ok((Wff::Bottom, &toks[1..])),
-        _ => Err(format!("TODO_ERR 27")),
+        _ => {
+            Err("when parsing logical expression: expected a proposition/predicate \
+                 name, a negation, left parenthesis, forall, exists or bottom, got something else."
+                .to_string())
+        }
     }
 }
 
@@ -288,35 +290,33 @@ fn parse_term(toks: &[Token]) -> Result<(Term, &[Token]), String> {
                 Ok((Term::Atomic(name.to_string()), &toks[1..]))
             }
         }
-        _ => Err(format!("TODO_ERR 26")),
+        _ => Err(
+            "expected term (i.e. variable, constant, or function application), got something else"
+                .to_string(),
+        ),
     }
 }
 
 fn parse_arg_list(toks: &[Token]) -> Result<(Vec<Term>, &[Token]), String> {
     if toks.first().unwrap_or(&Token::Bottom) != &Token::LPar {
-        return Err(format!("TODO_ERR 25"));
+        return Err("when parsing an argument list: expected (, found something else".to_string());
     }
 
     let mut terms: Vec<Term> = vec![];
 
-    if let Ok((term, mut rem_toks)) = parse_term(&toks[1..]) {
-        terms.push(term);
-        while rem_toks.first().unwrap_or(&Token::Bottom) == &Token::Comma {
-            if let Ok((term2, rem_rem_toks)) = parse_term(&rem_toks[1..]) {
-                terms.push(term2);
-                rem_toks = rem_rem_toks;
-            } else {
-                return Err(format!("TODO_ERR 14"));
-            }
-        }
+    let (term, mut rem_toks) = parse_term(&toks[1..])?;
 
-        if rem_toks.first().unwrap_or(&Token::Bottom) == &Token::RPar {
-            Ok((terms, &rem_toks[1..]))
-        } else {
-            Err(format!("TODO_ERR 24"))
-        }
+    terms.push(term);
+    while rem_toks.first().unwrap_or(&Token::Bottom) == &Token::Comma {
+        let (term2, rem_rem_toks) = parse_term(&rem_toks[1..])?;
+        terms.push(term2);
+        rem_toks = rem_rem_toks;
+    }
+
+    if rem_toks.first().unwrap_or(&Token::Bottom) == &Token::RPar {
+        Ok((terms, &rem_toks[1..]))
     } else {
-        Err(format!("TODO_ERR 23"))
+        Err("when parsing argument list: expected (<term>{,<term>}), but did not find the closing bracket )".to_string())
     }
 }
 
@@ -377,7 +377,8 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
         // note that we set colon_index to toks.len() in case of =Intro
 
         if colon_index < 4 {
-            return Err(format!("TODO_ERR 22")); // colon cannot appear this early in a sentence
+            return Err("failed to parse proof line. The proof line contains a colon, but this colon appears so early that it cannot possibly be a justification".to_string());
+            // colon cannot appear this early in a sentence
         }
         let toks_before_justification: &[Token];
         let toks_justification: &[Token];
@@ -392,7 +393,7 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
                     toks_justification = &toks[colon_index - 2..];
                 }
                 _ => {
-                    return Err(format!("TODO_ERR 21")); // nonexistent rule name
+                    return Err(format!("failed to parse justification. Expected \'Reit\', \'Intro\' or \'Elim\', found {name}. Note that capitalization matters, only the first letter must be uppercase and the others should be lowercase."));
                 }
             }
 
@@ -417,10 +418,10 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
                     constant_between_square_brackets: None,
                 })
             } else {
-                Err(format!("TODO_ERR 20"))
+                Err("a line with an inference should always start with a line number (integer), followed by at least one vertical bar.".to_string())
             }
         } else {
-            Err(format!("TODO_ERR 19")) // colon must be preceded by a rule name
+            Err("sentence contains a colon, which was expected to be preceded by \'Intro\', \'Elim\' or \'Reit\' (with that capitalization), but the parser did not find any of these.".to_string())
         }
     } else {
         // Now we must be in one if these cases:
@@ -429,12 +430,13 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
         //  '|' { '|' } - { - }
         //  '|' { '|' }
         if toks.first().is_none() {
-            return Err(format!("TODO_ERR 50"));
+            return Err("one proof line appears to be empty".to_string());
         }
         match toks.first().unwrap() {
             Token::Number(num) => {
                 let Some(Token::ConseqVertBar(depth)) = toks.get(1) else {
-                    return Err(format!("TODO_ERR 52"));
+                    return Err("after the line number, there should be at least one vertical bar"
+                        .to_string());
                 };
                 let mut const_betw_sqbr: Option<Term> = None;
                 let expression_start_index: usize = if let (
@@ -445,7 +447,7 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
                 {
                     const_betw_sqbr = Some(Term::Atomic(name.to_string()));
                     if !name.chars().next().unwrap_or('U').is_lowercase() {
-                        return Err(format!("TODO_ERR 53"));
+                        return Err("a boxed constant must be a constant; as such, it should start with a lowercase letter".to_string());
                     }
                     if toks.len() == 5 {
                         // this premise contains only a boxed constant, no further expression:
@@ -464,21 +466,18 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
                 } else {
                     2
                 };
-                if let Ok(wff) =
-                    parse_logical_expr(toks.get(expression_start_index..).unwrap_or(&[]))
-                {
-                    return Ok(ProofLine {
-                        line_num: Some(*num),
-                        depth: *depth,
-                        is_premise: true,
-                        is_fitch_bar_line: false,
-                        sentence: Some(wff),
-                        justification: None,
-                        constant_between_square_brackets: const_betw_sqbr,
-                    });
-                }
 
-                Err(format!("TODO_ERR 18"))
+                let wff = parse_logical_expr(toks.get(expression_start_index..).unwrap_or(&[]))?;
+
+                Ok(ProofLine {
+                    line_num: Some(*num),
+                    depth: *depth,
+                    is_premise: true,
+                    is_fitch_bar_line: false,
+                    sentence: Some(wff),
+                    justification: None,
+                    constant_between_square_brackets: const_betw_sqbr,
+                })
             }
             Token::ConseqVertBar(depth) => {
                 if toks[1..].iter().all(|t| t == &Token::Dash) {
@@ -493,10 +492,13 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
                         constant_between_square_brackets: None,
                     })
                 } else {
-                    Err(format!("TODO_ERR 17"))
+                    Err("when you have a line without line number, then that line can only possibly contain some minuses to indicate a Fitch bar, but it may contain no other tokens than minuses after the vertical bar(s)".to_string())
                 }
             }
-            _ => Err(format!("TODO_ERR 16")),
+            _ => {
+                Err("each text line must start either with a line number or a vertical bar"
+                    .to_string())
+            }
         }
     }
 }
@@ -710,14 +712,15 @@ fn parse_justification(toks: &[Token]) -> Result<Justification, String> {
         (Token::Forall, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
+            let err_str = "failed to parse ∀Intro justification. It should be of this form: ∀Intro:<num>-<num>".to_string();
             if toks.len() != 6 {
-                Err(format!("TODO_ERR 64"))
+                Err(err_str)
             } else if let (Token::Dash, Token::Number(num2)) =
                 (toks.get(4).unwrap(), toks.get(5).unwrap())
             {
                 Ok(Justification::ForallIntro((*num1, *num2)))
             } else {
-                Err(format!("TODO_ERR 6"))
+                Err(err_str)
             }
         }
         (Token::Forall, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
