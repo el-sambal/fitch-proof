@@ -1043,3 +1043,15 @@ fn test_bonus_ai_2018_3() {
 
     assert!(!fitch_proof::proof_is_correct(proof));
 }
+#[test]
+fn test_funny_bicond_and_no_premises() {
+    let proof = "
+  |--
+1 | | A
+  | | ---
+2 | | A    Reit: 1
+3 | A ↔ A  ↔Intro:1-2,1-2
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
