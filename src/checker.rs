@@ -627,7 +627,7 @@ impl Proof {
             } else if line.depth + 1 == prev_depth {
                 units.push(ProofUnit::SubproofClose);
             } else if line.depth != prev_depth {
-                return Err(format!("Error: near line {}, there is an \'indentation/scope jump\' that is too big. You cannot open or close two subproofs in the same line.",last_line_num+1));
+                return Err(format!("near line {}, there is an \'indentation/scope jump\' that is too big. You cannot open or close two subproofs in the same line.",last_line_num+1));
             }
             if let Some(line_num) = line.line_num {
                 last_line_num = line_num;
