@@ -8,22 +8,18 @@ pub fn parse_fitch_proof(proof: &str) -> Result<Vec<ProofLine>, String> {
     proof
         .lines()
         .filter(|s| !s.is_empty())
-        .map(|x| {
-            if let Ok(toks) = lex_logical_expr(x) {
+        .map(|x| match lex_logical_expr(x) {
+            Ok(toks) => {
                 if let Some(line) = parse_proof_line(&toks) {
                     if let Some(line_num) = line.line_num {
                         last_line_num = line_num;
                     }
                     Ok(line)
                 } else {
-                    Err(format!("Parser failure somewhere after line {last_line_num}."))
+                    Err(format!("parser failure near line {}.", last_line_num + 1))
                 }
-            } else {
-                Err(format!(
-                    "Lexer failure somewhere after line {last_line_num}. \
-                    You are most likely using an illegal character."
-                ))
             }
+            Err(err) => Err(format!("lexer failure near line {}: {}", last_line_num + 1, err)),
         })
         .collect()
 }
