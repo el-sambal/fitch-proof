@@ -618,6 +618,7 @@ impl Proof {
     fn lines_to_units(proof_lines: &[ProofLine]) -> Result<Vec<ProofUnit>, String> {
         let mut units: Vec<ProofUnit> = vec![];
         let mut prev_depth = 1;
+        let mut last_line_num = 0;
 
         // translate the proof to `ProofUnit`s
         for line in proof_lines {
@@ -626,9 +627,10 @@ impl Proof {
             } else if line.depth + 1 == prev_depth {
                 units.push(ProofUnit::SubproofClose);
             } else if line.depth != prev_depth {
-                return Err("Error: somewhere in this proof, there is an \'indentation/scope jump\' that is too big. You cannot open or close two subproofs in the same line.".to_string());
+                return Err(format!("Error: near line {}, there is an \'indentation/scope jump\' that is too big. You cannot open or close two subproofs in the same line.",last_line_num+1));
             }
             if let Some(line_num) = line.line_num {
+                last_line_num = line_num;
                 if line.is_premise && line.constant_between_square_brackets.is_none() {
                     units.push(ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(line_num));
                 } else if line.is_premise {
