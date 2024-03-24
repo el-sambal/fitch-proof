@@ -601,3 +601,197 @@ fn test_exists_intro_zero_or_more_8() {
 
     assert!(!fitch_proof::proof_is_correct(proof));
 }
+#[test]
+fn test_bicond_elim_1() {
+    let proof = "
+1 | A↔B
+2 | B
+3 | A
+  | --
+4 | A     ↔ Elim:1,2
+5 | B     ↔ Elim:1,4
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_bicond_elim_2() {
+    let proof = "
+1 | A↔B
+2 | B
+3 | A
+  | --
+4 | A     ↔ Elim:1,3
+5 | B     ↔ Elim:1,4
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_bicond_elim_3() {
+    let proof = "
+1 | A↔B
+2 | B
+3 | A
+  | --
+4 | A     ↔ Elim:2,1
+5 | B     ↔ Elim:1,4
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_bicond_elim_4() {
+    let proof = "
+1 | A↔B
+2 | B
+3 | A
+  | --
+4 | A     ↔ Elim:1,5
+5 | B     ↔ Elim:1,4
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_bicond_intro_1() {
+    let proof = "
+1 | A→B
+2 | B→A
+  | ---
+3 | | A
+  | | ---
+4 | | B     →Elim: 1,3
+  |
+5 | | B
+  | | ---
+6 | | A     →Elim: 2,5
+7 | A↔B     ↔Intro:3-4,5-6
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_bicond_intro_2() {
+    let proof = "
+1 | A→B
+2 | B→A
+  | ---
+3 | | A
+  | | ---
+4 | | B     →Elim: 1,3
+  |
+5 | | B
+  | | ---
+6 | | A     →Elim: 2,5
+7 | A↔B     ↔Intro:5-6,3-4
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_bicond_intro_3() {
+    let proof = "
+1 | A→B
+2 | B→A
+  | ---
+3 | | A
+  | | ---
+4 | | B     →Elim: 1,3
+  |
+5 | | B
+  | | ---
+6 | | A     →Elim: 2,5
+7 | B↔A     ↔Intro:3-4,5-6
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_bicond_intro_4() {
+    let proof = "
+1 | A→B
+2 | B→A
+  | ---
+3 | | A
+  | | ---
+4 | | B     →Elim: 1,3
+  |
+5 | | B
+  | | ---
+6 | | A     →Elim: 2,5
+7 | B↔A     ↔Intro:5-6,3-4
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_bicond_intro_5() {
+    let proof = "
+1 | A→B
+2 | B→A
+  | ---
+3 | | [a] A
+  | | ---
+4 | | B     →Elim: 1,3
+  |
+5 | | B
+  | | ---
+6 | | A     →Elim: 2,5
+7 | B↔A     ↔Intro:5-6,3-4
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_implies_intro_1() {
+    let proof = "
+1 | A→B
+  | ---
+2 | | A
+  | | ---
+3 | | B      →Elim:1,2
+4 | A→B      →Intro:2-3
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_implies_intro_2() {
+    let proof = "
+1 | A→B
+  | ---
+2 | | [a] A
+  | | ---
+3 | | B      →Elim:1,2
+4 | A→B      →Intro:2-3
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_implies_intro_3() {
+    let proof = "
+1 | A→B
+  | ---
+2 | | [A] A
+  | | ---
+3 | | B      →Elim:1,2
+4 | A→B      →Intro:2-3
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_implies_intro_4() {
+    let proof = "
+1 | A→B
+  | ---
+2 | | A
+  | | ---
+3 | | B      →Elim:2,1
+4 | A→B      →Intro:2-3
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}

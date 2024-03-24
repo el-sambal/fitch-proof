@@ -944,9 +944,11 @@ impl Proof {
                     if let Wff::Implies(a, b) = curr_wff {
                         let (s_begin, s_end) =
                             self.get_subproof_at_lines(curr_line_num, (*n, *m))?;
-                        if let (Some(s_begin_wff), Some(s_end_wff)) =
-                            (&s_begin.sentence, &s_end.sentence)
-                        {
+                        if let (Some(s_begin_wff), Some(s_end_wff), None) = (
+                            &s_begin.sentence,
+                            &s_end.sentence,
+                            &s_begin.constant_between_square_brackets,
+                        ) {
                             if **a != *s_begin_wff && **b == *s_end_wff {
                                 Err(format!(
                                     "Line {curr_line_num}: →Intro is used, but \
@@ -1002,11 +1004,56 @@ impl Proof {
                         ))
                     }
                 }
-                Justification::BicondIntro(..) => {
-                    todo!()
+                Justification::BicondIntro((sb1, se1), (sb2, se2)) => {
+                    if let Wff::Bicond(p, q) = curr_wff {
+                        let (s_begin1, s_end1) =
+                            self.get_subproof_at_lines(curr_line_num, (*sb1, *se1))?;
+                        let (s_begin2, s_end2) =
+                            self.get_subproof_at_lines(curr_line_num, (*sb2, *se2))?;
+                        if let (
+                            Some(s_begin_wff1),
+                            Some(s_end_wff1),
+                            Some(s_begin_wff2),
+                            Some(s_end_wff2),
+                            None,
+                            None,
+                        ) = (
+                            &s_begin1.sentence,
+                            &s_end1.sentence,
+                            &s_begin2.sentence,
+                            &s_end2.sentence,
+                            &s_begin1.constant_between_square_brackets,
+                            &s_begin2.constant_between_square_brackets,
+                        ) {
+                            if **p == *s_begin_wff1
+                                && **q == *s_end_wff1
+                                && **p == *s_end_wff2
+                                && **q == *s_begin_wff2
+                            {
+                                Ok(())
+                            } else {
+                                Err(format!("Line {curr_line_num}: when using ↔Intro to infer P↔Q, you must first cite the subproof that proves P→Q, and then the subproof that proves Q→P."))
+                            }
+                        } else {
+                            Err(format!("Line {curr_line_num}: when using ↔Intro, you cannot reference a subproof that introduces a boxed constant."))
+                        }
+                    } else {
+                        Err(format!("Line {curr_line_num}: ↔Intro is used, but the top-level connective of this sentence is not a bi-implication."))
+                    }
                 }
                 Justification::BicondElim(n, m) => {
-                    todo!()
+                    if let Wff::Bicond(wff1, wff2) = self.get_wff_at_line(curr_line_num, *n)? {
+                        let wff_m = self.get_wff_at_line(curr_line_num, *m)?;
+                        if (*wff_m == **wff1 && **wff2 == *curr_wff)
+                            || (*wff_m == **wff2 && **wff1 == *curr_wff)
+                        {
+                            Ok(())
+                        } else {
+                            Err(format!("Line {curr_line_num}: the rule ↔Elim is wrongly used."))
+                        }
+                    } else {
+                        Err(format!("Line {curr_line_num}: the rule ↔Elim: {n}, {m} is used, but the top-level connective of line {n} is not a bi-implication."))
+                    }
                 }
                 Justification::NotIntro((n, m)) => {
                     let (s_begin, s_end) = self.get_subproof_at_lines(curr_line_num, (*n, *m))?;

@@ -435,6 +435,9 @@ fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
                         (toks.get(2), toks.get(3), toks.get(4))
                     {
                         const_betw_sqbr = Some(Term::Atomic(name.to_string()));
+                        if !name.chars().next()?.is_lowercase() {
+                            return None;
+                        }
                         if toks.len() == 5 {
                             // this premise contains only a boxed constant, no further expression:
                             // early exit
