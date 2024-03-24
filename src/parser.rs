@@ -755,7 +755,7 @@ fn parse_justification(toks: &[Token]) -> Result<Justification, String> {
                 Err(err_str)
             }
         }
-        _ => Err("failed to parse justification. Note that the proper capitalization is \'Intro\'/\'Elim\'/\'Reit\'.".to_string()),
+        _ => Err("failed to parse justification. Make sure that you have references where necessary, and note that the proper capitalization is \'Intro\'/\'Elim\'/\'Reit\'.".to_string()),
     }
 }
 
