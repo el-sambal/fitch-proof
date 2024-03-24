@@ -189,11 +189,16 @@ impl Proof {
             match self.units[i] {
                 ProofUnit::FitchBarLine => {}
                 ProofUnit::NumberedProofLinePremiseWithBoxedConstant(num) => {
-                    currently_in_scope.push(
-                        self.get_proofline_at_line_unsafe(num)
-                            .constant_between_square_brackets
-                            .clone(),
-                    );
+                    let new_boxed_const =
+                        &self.get_proofline_at_line_unsafe(num).constant_between_square_brackets;
+
+                    // before we add the new variable to current scope,
+                    // test that it was not already in scope:
+                    if currently_in_scope.contains(new_boxed_const) {
+                        errors.push(format!("Line {num}: you cannot introduce the same boxed constant twice in nested subproofs"));
+                    }
+
+                    currently_in_scope.push(new_boxed_const.clone());
 
                     if let Some(wff) = &self.get_proofline_at_line_unsafe(num).sentence {
                         match check_wff_not_contain_out_of_scope_boxed_consts(
