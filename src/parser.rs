@@ -9,16 +9,13 @@ pub fn parse_fitch_proof(proof: &str) -> Result<Vec<ProofLine>, String> {
         .lines()
         .filter(|s| !s.is_empty())
         .map(|x| match lex_logical_expr(x) {
-            Ok(toks) => {
-                if let Some(line) = parse_proof_line(&toks) {
-                    if let Some(line_num) = line.line_num {
-                        last_line_num = line_num;
-                    }
+            Ok(toks) => match parse_proof_line(&toks) {
+                Ok(line) => {
+                    last_line_num = line.line_num.unwrap_or(last_line_num);
                     Ok(line)
-                } else {
-                    Err(format!("parser failure near line {}.", last_line_num + 1))
                 }
-            }
+                Err(err) => Err(format!("parser failure near line {}: {}", last_line_num + 1, err)),
+            },
             Err(err) => Err(format!("lexer failure near line {}: {}", last_line_num + 1, err)),
         })
         .collect()
@@ -145,176 +142,180 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
 // <PredicateName> : some string starting with an UPPERCASE letter
 // <AtomicPropositionName> : some string starting with an UPPERCASE letter
 
-fn parse_logical_expr(toks: &[Token]) -> Option<Wff> {
-    if let Some((wff, rem_toks)) = parse_e1(toks) {
+fn parse_logical_expr(toks: &[Token]) -> Result<Wff, String> {
+    if let Ok((wff, rem_toks)) = parse_e1(toks) {
         if rem_toks.is_empty() {
             // there should be no remaining tokens!
-            return Some(wff);
+            return Ok(wff);
         } else {
-            return None;
+            return Err(format!("ERR_TODO 1"));
         }
     }
-    None
+    Err(format!("ERR_TODO 2"))
 }
 
-fn parse_e1(toks: &[Token]) -> Option<(Wff, &[Token])> {
+fn parse_e1(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
     // always accept the first <E2>
-    if let Some((wff, mut rem_toks)) = parse_e2(toks) {
+    if let Ok((wff, mut rem_toks)) = parse_e2(toks) {
         if rem_toks.is_empty() {
-            return Some((wff, rem_toks));
+            return Ok((wff, rem_toks));
         }
         return match rem_toks[0] {
             // <E2> implies <E2>
             Token::Implies => {
-                if let Some((wff2, rem_rem_toks)) = parse_e2(rem_toks.get(1..)?) {
-                    return Some((Wff::Implies(Box::new(wff), Box::new(wff2)), rem_rem_toks));
+                if let Ok((wff2, rem_rem_toks)) = parse_e2(rem_toks.get(1..).unwrap_or(&[])) {
+                    return Ok((Wff::Implies(Box::new(wff), Box::new(wff2)), rem_rem_toks));
                 }
-                None
+                Err(format!("TODO_ERR 38"))
             }
             // <E2> implies <E2>
             Token::Bicond => {
-                if let Some((wff2, rem_rem_toks)) = parse_e2(rem_toks.get(1..)?) {
-                    return Some((Wff::Bicond(Box::new(wff), Box::new(wff2)), rem_rem_toks));
+                if let Ok((wff2, rem_rem_toks)) = parse_e2(rem_toks.get(1..).unwrap_or(&[])) {
+                    return Ok((Wff::Bicond(Box::new(wff), Box::new(wff2)), rem_rem_toks));
                 }
-                None
+                Err(format!("TODO_ERR 37"))
             }
             // <E2> and <E2> {and <E2>}
             Token::And => {
                 let mut conjs: Vec<Wff> = vec![wff];
                 while !rem_toks.is_empty() && rem_toks[0] == Token::And {
-                    if let Some((new_wff, rem_rem_toks)) = parse_e2(rem_toks.get(1..)?) {
+                    if let Ok((new_wff, rem_rem_toks)) = parse_e2(rem_toks.get(1..).unwrap_or(&[])) {
                         rem_toks = rem_rem_toks;
                         conjs.push(new_wff);
                     } else {
-                        return None;
+                        return Err(format!("TODO_ERR 37"));
                     }
                 }
-                Some((Wff::And(conjs), rem_toks))
+                Ok((Wff::And(conjs), rem_toks))
             }
             // <E2> or <E2> {or <E2>}
             Token::Or => {
                 let mut disjs: Vec<Wff> = vec![wff];
                 while !rem_toks.is_empty() && rem_toks[0] == Token::Or {
-                    if let Some((new_wff, rem_rem_toks)) = parse_e2(rem_toks.get(1..)?) {
+                    if let Ok((new_wff, rem_rem_toks)) = parse_e2(rem_toks.get(1..).unwrap_or(&[])) {
                         rem_toks = rem_rem_toks;
                         disjs.push(new_wff);
                     } else {
-                        return None;
+                        return Err(format!("TODO_ERR 36"));
                     }
                 }
-                Some((Wff::Or(disjs), rem_toks))
+                Ok((Wff::Or(disjs), rem_toks))
             }
             // found just a single <E2>
-            _ => Some((wff, rem_toks)),
+            _ => Ok((wff, rem_toks)),
         };
     }
 
-    None
+    Err(format!("TODO_ERR 35"))
 }
 
-fn parse_e2(toks: &[Token]) -> Option<(Wff, &[Token])> {
+fn parse_e2(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
     // just <E3>
-    if let Some((wff, rem_toks)) = parse_e3(toks) {
-        return Some((wff, rem_toks));
+    if let Ok((wff, rem_toks)) = parse_e3(toks) {
+        return Ok((wff, rem_toks));
     }
 
     // <Term> equals <Term>
-    if let Some((term1, rem_toks1)) = parse_term(toks) {
-        if rem_toks1.first()? == &Token::Equals {
-            if let Some((term2, rem_toks2)) = parse_term(rem_toks1.get(1..)?) {
-                return Some((Wff::Equals(term1, term2), rem_toks2));
+    if let Ok((term1, rem_toks1)) = parse_term(toks) {
+        if rem_toks1.first().unwrap_or(&Token::Bottom) == &Token::Equals {
+            if let Ok((term2, rem_toks2)) = parse_term(rem_toks1.get(1..).unwrap_or(&[])) {
+                return Ok((Wff::Equals(term1, term2), rem_toks2));
             }
         }
     }
 
-    None
+    Err(format!("TODO_ERR 34"))
 }
 
-fn parse_e3(toks: &[Token]) -> Option<(Wff, &[Token])> {
-    match toks.first()? {
-        Token::Name(name) if name.chars().next()?.is_uppercase() => {
-            if let Some((terms, rem_toks)) = parse_arg_list(toks.get(1..)?) {
-                Some((Wff::PredApp(name.to_string(), terms), rem_toks))
+fn parse_e3(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
+    if toks.first().is_none() {
+        return 
+                Err(format!("TODO_ERR 73"));
+    }
+    match toks.first().unwrap() {
+        Token::Name(name) if name.chars().next().unwrap().is_uppercase() => {
+            if let Ok((terms, rem_toks)) = parse_arg_list(&toks[1..]) {
+                Ok((Wff::PredApp(name.to_string(), terms), rem_toks))
             } else {
-                Some((Wff::Atomic(name.to_string()), &toks[1..]))
+                Ok((Wff::Atomic(name.to_string()), &toks[1..]))
             }
         }
         Token::Not => {
-            if let Some((wff, rem_toks)) = parse_e3(&toks[1..]) {
-                Some((Wff::Not(Box::new(wff)), rem_toks))
+            if let Ok((wff, rem_toks)) = parse_e3(&toks[1..]) {
+                Ok((Wff::Not(Box::new(wff)), rem_toks))
             } else {
-                None
+                Err(format!("TODO_ERR 33"))
             }
         }
         Token::LPar => {
-            if let Some((wff, rem_toks)) = parse_e1(&toks[1..]) {
-                if rem_toks.first()? == &Token::RPar {
-                    return Some((wff, &rem_toks[1..]));
+            if let Ok((wff, rem_toks)) = parse_e1(&toks[1..]) {
+                if rem_toks.first().unwrap_or(&Token::Bottom) == &Token::RPar {
+                    return Ok((wff, &rem_toks[1..]));
                 }
             }
-            None
+            Err(format!("TODO_ERR 32"))
         }
-        Token::Forall => match toks.get(1)? {
-            Token::Name(name) if name.chars().next()?.is_lowercase() => {
-                if let Some((wff, rem_toks)) = parse_e3(toks.get(2..)?) {
-                    return Some((Wff::Forall(name.to_owned(), Box::new(wff)), rem_toks));
+        Token::Forall => match toks.get(1) {
+            Some(Token::Name(name) )if name.chars().next().unwrap().is_lowercase() => {
+                if let Ok((wff, rem_toks)) = parse_e3(&toks[2..]) {
+                    return Ok((Wff::Forall(name.to_owned(), Box::new(wff)), rem_toks));
                 }
-                None
+                Err(format!("TODO_ERR 31"))
             }
-            _ => None,
+            _ => Err(format!("TODO_ERR 30")),
         },
-        Token::Exists => match toks.get(1)? {
-            Token::Name(name) if name.chars().next()?.is_lowercase() => {
-                if let Some((wff, rem_toks)) = parse_e3(toks.get(2..)?) {
-                    return Some((Wff::Exists(name.to_owned(), Box::new(wff)), rem_toks));
+        Token::Exists => match toks.get(1) {
+            Some(Token::Name(name)) if name.chars().next().unwrap().is_lowercase() => {
+                if let Ok((wff, rem_toks)) = parse_e3(&toks[2..]) {
+                    return Ok((Wff::Exists(name.to_owned(), Box::new(wff)), rem_toks));
                 }
-                None
+                Err(format!("TODO_ERR 29"))
             }
-            _ => None,
+            _ => Err(format!("TODO_ERR 28")),
         },
-        Token::Bottom => Some((Wff::Bottom, &toks[1..])),
-        _ => None,
+        Token::Bottom => Ok((Wff::Bottom, &toks[1..])),
+        _ => Err(format!("TODO_ERR 27")),
     }
 }
 
-fn parse_term(toks: &[Token]) -> Option<(Term, &[Token])> {
-    match toks.first()? {
-        Token::Name(name) => {
-            if let Some((terms, rem_toks)) = parse_arg_list(&toks[1..]) {
-                Some((Term::FuncApp(name.to_string(), terms), rem_toks))
+fn parse_term(toks: &[Token]) -> Result<(Term, &[Token]), String> {
+    match toks.first() {
+        Some(Token::Name(name) )=> {
+            if let Ok((terms, rem_toks)) = parse_arg_list(&toks[1..]) {
+                Ok((Term::FuncApp(name.to_string(), terms), rem_toks))
             } else {
-                Some((Term::Atomic(name.to_string()), &toks[1..]))
+                Ok((Term::Atomic(name.to_string()), &toks[1..]))
             }
         }
-        _ => None,
+        _ => Err(format!("TODO_ERR 26")),
     }
 }
 
-fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
-    if toks.first()? != &Token::LPar {
-        return None;
+fn parse_arg_list(toks: &[Token]) -> Result<(Vec<Term>, &[Token]), String> {
+    if toks.first().unwrap_or(&Token::Bottom) != &Token::LPar {
+        return Err(format!("TODO_ERR 25"));
     }
 
     let mut terms: Vec<Term> = vec![];
 
-    if let Some((term, mut rem_toks)) = parse_term(&toks[1..]) {
+    if let Ok((term, mut rem_toks)) = parse_term(&toks[1..]) {
         terms.push(term);
-        while rem_toks.first()? == &Token::Comma {
-            if let Some((term2, rem_rem_toks)) = parse_term(rem_toks.get(1..)?) {
+        while rem_toks.first().unwrap_or(&Token::Bottom) == &Token::Comma {
+            if let Ok((term2, rem_rem_toks)) = parse_term(&rem_toks[1..]) {
                 terms.push(term2);
                 rem_toks = rem_rem_toks;
             } else {
-                return None;
+                return Err(format!("TODO_ERR 14"));
             }
         }
 
-        if rem_toks.first()? == &Token::RPar {
-            Some((terms, &rem_toks[1..]))
+        if rem_toks.first().unwrap_or(&Token::Bottom) == &Token::RPar {
+            Ok((terms, &rem_toks[1..]))
         } else {
-            None
+            Err(format!("TODO_ERR 24"))
         }
     } else {
-        None
+        Err(format!("TODO_ERR 23"))
     }
 }
 
@@ -364,7 +365,7 @@ fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
 // justification first (=Intro is the only justification without colon). For the rest, everything
 // can just be done normally from left to right.
 
-fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
+fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
     if toks.contains(&Token::Colon)
         || (toks.last() == Some(&Token::Name("Intro".to_string())) // special check for =Intro
             && toks.get(toks.len() - 2) == Some(&Token::Equals))
@@ -375,7 +376,7 @@ fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
         // note that we set colon_index to toks.len() in case of =Intro
 
         if colon_index < 4 {
-            return None; // colon cannot appear this early in a sentence
+            return Err(format!("TODO_ERR 22")); // colon cannot appear this early in a sentence
         }
         let toks_before_justification: &[Token];
         let toks_justification: &[Token];
@@ -390,22 +391,22 @@ fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
                     toks_justification = &toks[colon_index - 2..];
                 }
                 _ => {
-                    return None; // nonexistent rule name
+                    return Err(format!("TODO_ERR 21")); // nonexistent rule name
                 }
             }
 
             if let (
-                Token::Number(line_num),
-                Token::ConseqVertBar(depth),
-                Some(wff),
-                Some(justific),
+                Some(Token::Number(line_num)),
+                Some(Token::ConseqVertBar(depth)),
+                wff,
+                justific,
             ) = (
-                toks_before_justification.first()?,
-                toks_before_justification.get(1)?,
-                parse_logical_expr(toks_before_justification.get(2..)?),
-                parse_justification(toks_justification),
+                toks_before_justification.first(),
+                toks_before_justification.get(1),
+                parse_logical_expr(toks_before_justification.get(2..).unwrap_or(&[]))?,
+                parse_justification(toks_justification)?,
             ) {
-                Some(ProofLine {
+                Ok(ProofLine {
                     line_num: Some(*line_num),
                     depth: *depth,
                     is_premise: false,
@@ -415,10 +416,10 @@ fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
                     constant_between_square_brackets: None,
                 })
             } else {
-                None
+                Err(format!("TODO_ERR 20"))
             }
         } else {
-            None // colon must be preceded by a rule name
+            Err(format!("TODO_ERR 19")) // colon must be preceded by a rule name
         }
     } else {
         // Now we must be in one if these cases:
@@ -426,56 +427,61 @@ fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
         //  <num> '|' { '|' } '[' <ConstantName> ']' [ <E1> ]
         //  '|' { '|' } - { - }
         //  '|' { '|' }
-        match toks.first()? {
+        if toks.first().is_none() {
+            return Err(format!("TODO_ERR 50"));
+        }
+        match toks.first().unwrap() {
             Token::Number(num) => {
-                if let Token::ConseqVertBar(depth) = toks.get(1)? {
-                    let mut const_betw_sqbr: Option<Term> = None;
-                    let expression_start_index: usize = if let (
-                        Some(Token::LSqBracket),
-                        Some(Token::Name(name)),
-                        Some(Token::RSqBracket),
-                    ) =
-                        (toks.get(2), toks.get(3), toks.get(4))
-                    {
-                        const_betw_sqbr = Some(Term::Atomic(name.to_string()));
-                        if !name.chars().next()?.is_lowercase() {
-                            return None;
-                        }
-                        if toks.len() == 5 {
-                            // this premise contains only a boxed constant, no further expression:
-                            // early exit
-                            return Some(ProofLine {
-                                line_num: Some(*num),
-                                depth: *depth,
-                                is_premise: true,
-                                is_fitch_bar_line: false,
-                                sentence: None,
-                                justification: None,
-                                constant_between_square_brackets: const_betw_sqbr,
-                            });
-                        }
-                        5
-                    } else {
-                        2
-                    };
-                    if let Some(wff) = parse_logical_expr(toks.get(expression_start_index..)?) {
-                        return Some(ProofLine {
+                let Some(Token::ConseqVertBar(depth)) = toks.get(1) else {
+                    return Err(format!("TODO_ERR 52"));
+                };
+                let mut const_betw_sqbr: Option<Term> = None;
+                let expression_start_index: usize = if let (
+                    Some(Token::LSqBracket),
+                    Some(Token::Name(name)),
+                    Some(Token::RSqBracket),
+                ) = (toks.get(2), toks.get(3), toks.get(4))
+                {
+                    const_betw_sqbr = Some(Term::Atomic(name.to_string()));
+                    if !name.chars().next().unwrap_or('U').is_lowercase() {
+                        return Err(format!("TODO_ERR 53"));
+                    }
+                    if toks.len() == 5 {
+                        // this premise contains only a boxed constant, no further expression:
+                        // early exit
+                        return Ok(ProofLine {
                             line_num: Some(*num),
                             depth: *depth,
                             is_premise: true,
                             is_fitch_bar_line: false,
-                            sentence: Some(wff),
+                            sentence: None,
                             justification: None,
                             constant_between_square_brackets: const_betw_sqbr,
                         });
                     }
+                    5
+                } else {
+                    2
+                };
+                if let Ok(wff) =
+                    parse_logical_expr(toks.get(expression_start_index..).unwrap_or(&[]))
+                {
+                    return Ok(ProofLine {
+                        line_num: Some(*num),
+                        depth: *depth,
+                        is_premise: true,
+                        is_fitch_bar_line: false,
+                        sentence: Some(wff),
+                        justification: None,
+                        constant_between_square_brackets: const_betw_sqbr,
+                    });
                 }
 
-                None
+                Err(format!("TODO_ERR 18"))
             }
             Token::ConseqVertBar(depth) => {
                 if toks[1..].iter().all(|t| t == &Token::Dash) {
-                    Some(ProofLine {
+                    Ok(ProofLine {
                         line_num: None,
                         depth: *depth,
                         is_premise: false,
@@ -486,18 +492,21 @@ fn parse_proof_line(toks: &[Token]) -> Option<ProofLine> {
                         constant_between_square_brackets: None,
                     })
                 } else {
-                    None
+                    Err(format!("TODO_ERR 17"))
                 }
             }
-            _ => None,
+            _ => Err(format!("TODO_ERR 16")),
         }
     }
 }
 
-fn parse_justification(toks: &[Token]) -> Option<Justification> {
-    match (toks.first()?, toks.get(1)?, toks.get(2), toks.get(3)) {
+fn parse_justification(toks: &[Token]) -> Result<Justification, String> {
+    if toks.first().is_none() || toks.get(1).is_none() {
+        return Err(format!("TODO_ERR 54"));
+    }
+    match (toks.first().unwrap(), toks.get(1).unwrap(), toks.get(2), toks.get(3)) {
         (Token::Name(name), Token::Colon, Some(Token::Number(num)), None) if name == "Reit" => {
-            Some(Justification::Reit(*num))
+            Ok(Justification::Reit(*num))
         }
         (Token::And, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Intro" =>
@@ -506,187 +515,200 @@ fn parse_justification(toks: &[Token]) -> Option<Justification> {
             let mut i = 4;
             while toks.get(i).is_some() {
                 if toks[i] == Token::Comma {
-                    if let Token::Number(next_num) = toks.get(i + 1)? {
+                    if toks.get(i + 1).is_none() {
+                        return Err(format!("TODO_ERR 55"));
+                    }
+                    if let Token::Number(next_num) = toks.get(i + 1).unwrap() {
                         nums.push(*next_num);
                     } else {
-                        return None;
+                        return Err(format!("TODO_ERR 14"));
                     }
                 } else {
-                    return None;
+                    return Err(format!("TODO_ERR 15"));
                 }
                 i += 2;
             }
-            Some(Justification::AndIntro(nums))
+            Ok(Justification::AndIntro(nums))
         }
         (Token::And, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Elim" && toks.get(4).is_none() =>
         {
-            Some(Justification::AndElim(*num))
+            Ok(Justification::AndElim(*num))
         }
         (Token::Or, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Intro" && toks.get(4).is_none() =>
         {
-            Some(Justification::OrIntro(*num))
+            Ok(Justification::OrIntro(*num))
         }
         (Token::Or, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Elim" =>
         {
             let mut num_pairs: Vec<(usize, usize)> = vec![];
             let mut i = 4;
-            toks.get(i)?; // should be at least one num-range provided
+            if toks.get(i).is_none() {
+                // should be at least one num-range provided
+                return Err(format!("TODO_ERR 56"));
+            };
             while toks.get(i).is_some() {
                 if toks[i] == Token::Comma {
-                    if let (Token::Number(next_num1), Token::Dash, Token::Number(next_num2)) =
-                        (toks.get(i + 1)?, toks.get(i + 2)?, toks.get(i + 3)?)
+                    if toks.get(i + 1).is_none()
+                        || toks.get(i + 2).is_none()
+                        || toks.get(i + 3).is_none()
                     {
+                        return Err(format!("TODO_ERR 57"));
+                    }
+                    if let (Token::Number(next_num1), Token::Dash, Token::Number(next_num2)) = (
+                        toks.get(i + 1).unwrap(),
+                        toks.get(i + 2).unwrap(),
+                        toks.get(i + 3).unwrap(),
+                    ) {
                         num_pairs.push((*next_num1, *next_num2));
                     } else {
-                        return None;
+                        return Err(format!("TODO_ERR 58"));
                     }
                 } else {
-                    return None;
+                    return Err(format!("TODO_ERR 59"));
                 }
                 i += 4;
             }
-            Some(Justification::OrElim(*num, num_pairs))
+            Ok(Justification::OrElim(*num, num_pairs))
         }
         (Token::Implies, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
-            if let (Token::Dash, Token::Number(num2), None) =
-                (toks.get(4)?, toks.get(5)?, toks.get(6))
+            if toks.len() != 6 {
+                return Err(format!("TODO_ERR 60"));
+            }
+            if let (Token::Dash, Token::Number(num2)) = (toks.get(4).unwrap(), toks.get(5).unwrap())
             {
-                Some(Justification::ImpliesIntro((*num1, *num2)))
+                Ok(Justification::ImpliesIntro((*num1, *num2)))
             } else {
-                None
+                Err(format!("TODO_ERR 13"))
             }
         }
         (Token::Implies, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Elim" =>
         {
-            if let (Token::Comma, Token::Number(num2), None) =
-                (toks.get(4)?, toks.get(5)?, toks.get(6))
-            {
-                Some(Justification::ImpliesElim(*num1, *num2))
+            if toks.len() != 6 {
+                Err(format!("TODO_ERR 70"))
+            } else if let [Token::Comma, Token::Number(num2)] = &toks[4..6] {
+                Ok(Justification::ImpliesElim(*num1, *num2))
             } else {
-                None
+                Err(format!("TODO_ERR 12"))
             }
         }
         (Token::Bicond, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
-            if let (
-                Token::Dash,
-                Token::Number(num2),
-                Token::Comma,
-                Token::Number(num3),
-                Token::Dash,
-                Token::Number(num4),
-                None,
-            ) = (
-                toks.get(4)?,
-                toks.get(5)?,
-                toks.get(6)?,
-                toks.get(7)?,
-                toks.get(8)?,
-                toks.get(9)?,
-                toks.get(10),
-            ) {
-                Some(Justification::BicondIntro((*num1, *num2), (*num3, *num4)))
+            if toks.len() != 10 {
+                Err(format!("TODO_ERR 68"))
+            } else if let [Token::Dash, Token::Number(num2), Token::Comma, Token::Number(num3), Token::Dash, Token::Number(num4)] =
+                &toks[4..10]
+            {
+                Ok(Justification::BicondIntro((*num1, *num2), (*num3, *num4)))
             } else {
-                None
+                Err(format!("TODO_ERR 11"))
             }
         }
         (Token::Bicond, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Elim" =>
         {
-            if let (Token::Comma, Token::Number(num2), None) =
-                (toks.get(4)?, toks.get(5)?, toks.get(6))
-            {
-                Some(Justification::BicondElim(*num1, *num2))
+            if toks.len() != 6 {
+                Err(format!("TODO_ERR 67"))
+            } else if let (Token::Comma, Token::Number(num2)) = (&toks[4], &toks[5]) {
+                Ok(Justification::BicondElim(*num1, *num2))
             } else {
-                None
+                Err(format!("TODO_ERR 10"))
             }
         }
         (Token::Not, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
-            if let (Token::Dash, Token::Number(num2), None) =
-                (toks.get(4)?, toks.get(5)?, toks.get(6))
-            {
-                Some(Justification::NotIntro((*num1, *num2)))
+            if toks.len() != 6 {
+                Err(format!("TODO_ERR 67"))
+            } else if let (Token::Dash, Token::Number(num2)) = (&toks[4], &toks[5]) {
+                Ok(Justification::NotIntro((*num1, *num2)))
             } else {
-                None
+                Err(format!("TODO_ERR 9"))
             }
         }
         (Token::Not, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Elim" && toks.get(4).is_none() =>
         {
-            Some(Justification::NotElim(*num))
+            Ok(Justification::NotElim(*num))
         }
         (Token::Bottom, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
-            if let (Token::Comma, Token::Number(num2), None) =
-                (toks.get(4)?, toks.get(5)?, toks.get(6))
-            {
-                Some(Justification::BottomIntro(*num1, *num2))
+            if toks.len() != 6 {
+                Err(format!("TODO_ERR 66"))
+            } else if let (Token::Comma, Token::Number(num2)) = (&toks[4], &toks[5]) {
+                Ok(Justification::BottomIntro(*num1, *num2))
             } else {
-                None
+                Err(format!("TODO_ERR 8"))
             }
         }
         (Token::Bottom, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Elim" && toks.get(4).is_none() =>
         {
-            Some(Justification::BottomElim(*num))
+            Ok(Justification::BottomElim(*num))
         }
         (Token::Equals, Token::Name(name), None, None) if name == "Intro" => {
-            Some(Justification::EqualsIntro)
+            Ok(Justification::EqualsIntro)
         }
         (Token::Equals, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Elim" =>
         {
-            if let (Token::Comma, Token::Number(num2), None) =
-                (toks.get(4)?, toks.get(5)?, toks.get(6))
+            if toks.len() != 6 {
+                Err(format!("TODO_ERR 65"))
+            } else if let (Token::Comma, Token::Number(num2)) =
+                (toks.get(4).unwrap(), toks.get(5).unwrap())
             {
-                Some(Justification::EqualsElim(*num1, *num2))
+                Ok(Justification::EqualsElim(*num1, *num2))
             } else {
-                None
+                Err(format!("TODO_ERR 7"))
             }
         }
         (Token::Forall, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Intro" =>
         {
-            if let (Token::Dash, Token::Number(num2), None) =
-                (toks.get(4)?, toks.get(5)?, toks.get(6))
+            if toks.len() != 6 {
+                Err(format!("TODO_ERR 64"))
+            } else if let (Token::Dash, Token::Number(num2)) =
+                (toks.get(4).unwrap(), toks.get(5).unwrap())
             {
-                Some(Justification::ForallIntro((*num1, *num2)))
+                Ok(Justification::ForallIntro((*num1, *num2)))
             } else {
-                None
+                Err(format!("TODO_ERR 6"))
             }
         }
         (Token::Forall, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Elim" && toks.get(4).is_none() =>
         {
-            Some(Justification::ForallElim(*num))
+            Ok(Justification::ForallElim(*num))
         }
         (Token::Exists, Token::Name(name), Some(Token::Colon), Some(Token::Number(num)))
             if name == "Intro" && toks.get(4).is_none() =>
         {
-            Some(Justification::ExistsIntro(*num))
+            Ok(Justification::ExistsIntro(*num))
         }
         (Token::Exists, Token::Name(name), Some(Token::Colon), Some(Token::Number(num1)))
             if name == "Elim" =>
         {
-            if let (Token::Comma, Token::Number(num2), Token::Dash, Token::Number(num3), None) =
-                (toks.get(4)?, toks.get(5)?, toks.get(6)?, toks.get(7)?, toks.get(8))
-            {
-                Some(Justification::ExistsElim(*num1, (*num2, *num3)))
+            if toks.len() != 8 {
+                Err(format!("TODO_ERR 63"))
+            } else if let (Token::Comma, Token::Number(num2), Token::Dash, Token::Number(num3)) = (
+                toks.get(4).unwrap(),
+                toks.get(5).unwrap(),
+                toks.get(6).unwrap(),
+                toks.get(7).unwrap(),
+            ) {
+                Ok(Justification::ExistsElim(*num1, (*num2, *num3)))
             } else {
-                None
+                Err(format!("TODO_ERR 4"))
             }
         }
-        _ => None,
+        _ => Err(format!("TODO_ERR 5")),
     }
 }
 
@@ -695,7 +717,10 @@ mod tests {
     use super::*;
     fn parse_logical_expression_string(expr: &str) -> Option<Wff> {
         if let Ok(toks) = lex_logical_expr(expr) {
-            return parse_logical_expr(&toks);
+            return match parse_logical_expr(&toks) {
+                Ok(expr) => Some(expr),
+                _ => None,
+            };
         }
         None
     }
@@ -1000,95 +1025,74 @@ mod tests {
     fn test_justification_parser_or_elim() {
         assert_eq!(
             parse_justification(&lex_logical_expr("∨Elim:42,43-44").unwrap()),
-            Some(Justification::OrElim(42, vec![(43, 44)]))
+            Ok(Justification::OrElim(42, vec![(43, 44)]))
         );
         assert_eq!(
             parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48").unwrap()),
-            Some(Justification::OrElim(42, vec![(43, 44), (45, 46), (47, 48)]))
+            Ok(Justification::OrElim(42, vec![(43, 44), (45, 46), (47, 48)]))
         );
-        assert_eq!(
-            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47,48").unwrap()),
-            None
-        );
-        assert_eq!(
-            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46-47-48").unwrap()),
-            None
-        );
-        assert_eq!(
-            parse_justification(&lex_logical_expr("∨Elim:42-43-44,45-46,47-48").unwrap()),
-            None
-        );
-        assert_eq!(
-            parse_justification(&lex_logical_expr("∨Elim-42,43-44,45-46,47-48").unwrap()),
-            None
-        );
-        assert_eq!(
-            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,").unwrap()),
-            None
-        );
-        assert_eq!(
-            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,49").unwrap()),
-            None
-        );
-        assert_eq!(
-            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,49-").unwrap()),
-            None
-        );
-        assert_eq!(parse_justification(&lex_logical_expr("∨Elim:42").unwrap()), None);
+        assert!(parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47,48").unwrap()).is_err());
+        assert!(parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46-47-48").unwrap()).is_err());
+        assert!(parse_justification(&lex_logical_expr("∨Elim:42-43-44,45-46,47-48").unwrap()).is_err());
+        assert!(parse_justification(&lex_logical_expr("∨Elim-42,43-44,45-46,47-48").unwrap()).is_err());
+        assert!(parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,").unwrap()).is_err());
+        assert!(parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,49").unwrap()).is_err());
+        assert!(parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,49-").unwrap()).is_err());
+        assert!(parse_justification(&lex_logical_expr("∨Elim:42").unwrap()).is_err());
     }
     #[test]
     fn test_justification_parser_and_intro() {
         assert_eq!(
             parse_justification(&lex_logical_expr("∧Intro:42,43,44").unwrap()),
-            Some(Justification::AndIntro(vec![42, 43, 44]))
+            Ok(Justification::AndIntro(vec![42, 43, 44]))
         );
         assert_eq!(
             parse_justification(&lex_logical_expr("∧Intro:42,43").unwrap()),
-            Some(Justification::AndIntro(vec![42, 43]))
+            Ok(Justification::AndIntro(vec![42, 43]))
         );
         assert_eq!(
             parse_justification(&lex_logical_expr("∧Intro:42").unwrap()),
             // TODO: decide whether i want to keep behavior like this (a "unary conjunction")
-            Some(Justification::AndIntro(vec![42]))
+            Ok(Justification::AndIntro(vec![42]))
         );
-        assert_eq!(parse_justification(&lex_logical_expr("∧Intro:42-43").unwrap()), None);
-        assert_eq!(parse_justification(&lex_logical_expr("∧Intro:").unwrap()), None);
+        assert!((parse_justification(&lex_logical_expr("∧Intro:42-43").unwrap()).is_err()));
+        assert!((parse_justification(&lex_logical_expr("∧Intro:").unwrap()).is_err()));
     }
     #[test]
     fn test_justification_parser_exists_elim() {
         assert_eq!(
             parse_justification(&lex_logical_expr("∃Elim:42,43-44").unwrap()),
-            Some(Justification::ExistsElim(42, (43, 44)))
+            Ok(Justification::ExistsElim(42, (43, 44)))
         );
     }
     #[test]
     fn test_justification_parser_implies_elim() {
         assert_eq!(
             parse_justification(&lex_logical_expr("→Elim:42,43").unwrap()),
-            Some(Justification::ImpliesElim(42, 43))
+            Ok(Justification::ImpliesElim(42, 43))
         );
-        assert_eq!(parse_justification(&lex_logical_expr("→Elim:42,43,").unwrap()), None);
+        assert!((parse_justification(&lex_logical_expr("→Elim:42,43,").unwrap()).is_err()));
     }
 
     #[test]
     fn test_parser_bug_infinite_loop_1() {
         let toks = lex_logical_expr("(f(g(a),=b)").unwrap();
-        parse_e2(&toks);
+        let _=parse_e2(&toks);
     }
 
     #[test]
     fn test_parser_bug_infinite_loop_2() {
         let toks = lex_logical_expr("f(g(a),=b").unwrap();
-        parse_e1(&toks);
+        let _=parse_e1(&toks);
     }
     #[test]
     fn test_parser_bug_infinite_loop_3() {
         let toks = lex_logical_expr("f(g(a),=b").unwrap();
-        parse_term(&toks);
+       let _= parse_term(&toks);
     }
     #[test]
     fn test_parser_bug_infinite_loop_4() {
         let toks = lex_logical_expr("(g(a),=b").unwrap();
-        parse_arg_list(&toks);
+     let _=   parse_arg_list(&toks);
     }
 }
