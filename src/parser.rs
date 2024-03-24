@@ -78,12 +78,19 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
                 toks.push(Token::Name(name));
             }
             '1'..='9' => {
-                let num: usize = iter::once(ch)
+                let num: Result<usize, _> = iter::once(ch)
                     .chain(from_fn(|| input_iter.by_ref().next_if(|c| c.is_ascii_digit())))
                     .collect::<String>()
-                    .parse()
-                    .unwrap();
-                toks.push(Token::Number(num));
+                    .parse();
+                let err = "there was an integer bigger than 999999999".to_string();
+                if let Ok(n) = num {
+                    if n > 999999999 {
+                        return Err(err);
+                    }
+                    toks.push(Token::Number(n));
+                } else {
+                    return Err(err);
+                }
             }
             '|' => {
                 let num: usize = iter::once(ch)
