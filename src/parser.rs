@@ -143,180 +143,175 @@ fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
 // <AtomicPropositionName> : some string starting with an UPPERCASE letter
 
 fn parse_logical_expr(toks: &[Token]) -> Result<Wff, String> {
-    if let Ok((wff, rem_toks)) = parse_e1(toks) {
+    if let Some((wff, rem_toks)) = parse_e1(toks) {
         if rem_toks.is_empty() {
             // there should be no remaining tokens!
             return Ok(wff);
         } else {
-            return Err(format!("ERR_TODO 1"));
+            return Err("found garbage tokens after logical expression".to_string());
         }
     }
-    Err(format!("ERR_TODO 2"))
+    Err("failed to parse logical expression".to_string())
 }
 
-fn parse_e1(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
+fn parse_e1(toks: &[Token]) -> Option<(Wff, &[Token])> {
     // always accept the first <E2>
-    if let Ok((wff, mut rem_toks)) = parse_e2(toks) {
+    if let Some((wff, mut rem_toks)) = parse_e2(toks) {
         if rem_toks.is_empty() {
-            return Ok((wff, rem_toks));
+            return Some((wff, rem_toks));
         }
         return match rem_toks[0] {
             // <E2> implies <E2>
             Token::Implies => {
-                if let Ok((wff2, rem_rem_toks)) = parse_e2(rem_toks.get(1..).unwrap_or(&[])) {
-                    return Ok((Wff::Implies(Box::new(wff), Box::new(wff2)), rem_rem_toks));
+                if let Some((wff2, rem_rem_toks)) = parse_e2(rem_toks.get(1..)?) {
+                    return Some((Wff::Implies(Box::new(wff), Box::new(wff2)), rem_rem_toks));
                 }
-                Err(format!("TODO_ERR 38"))
+                None
             }
             // <E2> implies <E2>
             Token::Bicond => {
-                if let Ok((wff2, rem_rem_toks)) = parse_e2(rem_toks.get(1..).unwrap_or(&[])) {
-                    return Ok((Wff::Bicond(Box::new(wff), Box::new(wff2)), rem_rem_toks));
+                if let Some((wff2, rem_rem_toks)) = parse_e2(rem_toks.get(1..)?) {
+                    return Some((Wff::Bicond(Box::new(wff), Box::new(wff2)), rem_rem_toks));
                 }
-                Err(format!("TODO_ERR 37"))
+                None
             }
             // <E2> and <E2> {and <E2>}
             Token::And => {
                 let mut conjs: Vec<Wff> = vec![wff];
                 while !rem_toks.is_empty() && rem_toks[0] == Token::And {
-                    if let Ok((new_wff, rem_rem_toks)) = parse_e2(rem_toks.get(1..).unwrap_or(&[]))
-                    {
+                    if let Some((new_wff, rem_rem_toks)) = parse_e2(rem_toks.get(1..)?) {
                         rem_toks = rem_rem_toks;
                         conjs.push(new_wff);
                     } else {
-                        return Err(format!("TODO_ERR 37"));
+                        return None;
                     }
                 }
-                Ok((Wff::And(conjs), rem_toks))
+                Some((Wff::And(conjs), rem_toks))
             }
             // <E2> or <E2> {or <E2>}
             Token::Or => {
                 let mut disjs: Vec<Wff> = vec![wff];
                 while !rem_toks.is_empty() && rem_toks[0] == Token::Or {
-                    if let Ok((new_wff, rem_rem_toks)) = parse_e2(rem_toks.get(1..).unwrap_or(&[]))
-                    {
+                    if let Some((new_wff, rem_rem_toks)) = parse_e2(rem_toks.get(1..)?) {
                         rem_toks = rem_rem_toks;
                         disjs.push(new_wff);
                     } else {
-                        return Err(format!("TODO_ERR 36"));
+                        return None;
                     }
                 }
-                Ok((Wff::Or(disjs), rem_toks))
+                Some((Wff::Or(disjs), rem_toks))
             }
             // found just a single <E2>
-            _ => Ok((wff, rem_toks)),
+            _ => Some((wff, rem_toks)),
         };
     }
 
-    Err(format!("TODO_ERR 35"))
+    None
 }
 
-fn parse_e2(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
+fn parse_e2(toks: &[Token]) -> Option<(Wff, &[Token])> {
     // just <E3>
-    if let Ok((wff, rem_toks)) = parse_e3(toks) {
-        return Ok((wff, rem_toks));
+    if let Some((wff, rem_toks)) = parse_e3(toks) {
+        return Some((wff, rem_toks));
     }
 
     // <Term> equals <Term>
-    if let Ok((term1, rem_toks1)) = parse_term(toks) {
-        if rem_toks1.first().unwrap_or(&Token::Bottom) == &Token::Equals {
-            if let Ok((term2, rem_toks2)) = parse_term(rem_toks1.get(1..).unwrap_or(&[])) {
-                return Ok((Wff::Equals(term1, term2), rem_toks2));
+    if let Some((term1, rem_toks1)) = parse_term(toks) {
+        if rem_toks1.first()? == &Token::Equals {
+            if let Some((term2, rem_toks2)) = parse_term(rem_toks1.get(1..)?) {
+                return Some((Wff::Equals(term1, term2), rem_toks2));
             }
         }
     }
 
-    Err(format!("when parsing logical expression: expected either <term>=<term> or a logical expression, but found neither"))
+    None
 }
 
-fn parse_e3(toks: &[Token]) -> Result<(Wff, &[Token]), String> {
-    if toks.first().is_none() {
-        return Err(format!("logical expression is not complete"));
-    }
-    match toks.first().unwrap() {
-        Token::Name(name) if name.chars().next().unwrap().is_uppercase() => {
-            if let Ok((terms, rem_toks)) = parse_arg_list(&toks[1..]) {
-                Ok((Wff::PredApp(name.to_string(), terms), rem_toks))
+fn parse_e3(toks: &[Token]) -> Option<(Wff, &[Token])> {
+    match toks.first()? {
+        Token::Name(name) if name.chars().next()?.is_uppercase() => {
+            if let Some((terms, rem_toks)) = parse_arg_list(toks.get(1..)?) {
+                Some((Wff::PredApp(name.to_string(), terms), rem_toks))
             } else {
-                Ok((Wff::Atomic(name.to_string()), &toks[1..]))
+                Some((Wff::Atomic(name.to_string()), &toks[1..]))
             }
         }
         Token::Not => {
-            let (wff, rem_toks) = parse_e3(&toks[1..])?;
-            Ok((Wff::Not(Box::new(wff)), rem_toks))
+            if let Some((wff, rem_toks)) = parse_e3(&toks[1..]) {
+                Some((Wff::Not(Box::new(wff)), rem_toks))
+            } else {
+                None
+            }
         }
         Token::LPar => {
-            let (wff, rem_toks) = parse_e1(&toks[1..])?;
-            if rem_toks.first().unwrap_or(&Token::Bottom) == &Token::RPar {
-                Ok((wff, &rem_toks[1..]))
-            } else {
-                Err("when parsing logical expression: closing bracket expected, but not found."
-                    .to_string())
+            if let Some((wff, rem_toks)) = parse_e1(&toks[1..]) {
+                if rem_toks.first()? == &Token::RPar {
+                    return Some((wff, &rem_toks[1..]));
+                }
             }
+            None
         }
-        Token::Forall => match toks.get(1) {
-            Some(Token::Name(name)) if name.chars().next().unwrap().is_lowercase() => {
-                let (wff, rem_toks) = parse_e3(&toks[2..])?;
-                Ok((Wff::Forall(name.to_owned(), Box::new(wff)), rem_toks))
+        Token::Forall => match toks.get(1)? {
+            Token::Name(name) if name.chars().next()?.is_lowercase() => {
+                if let Some((wff, rem_toks)) = parse_e3(toks.get(2..)?) {
+                    return Some((Wff::Forall(name.to_owned(), Box::new(wff)), rem_toks));
+                }
+                None
             }
-            _ => Err("when parsing a forall: expected the name of a variable to quantify \
-                      over, got something else. Note that variables start with lowercase letters"
-                .to_string()),
+            _ => None,
         },
-        Token::Exists => match toks.get(1) {
-            Some(Token::Name(name)) if name.chars().next().unwrap().is_lowercase() => {
-                let (wff, rem_toks) = parse_e3(&toks[2..])?;
-                Ok((Wff::Exists(name.to_owned(), Box::new(wff)), rem_toks))
+        Token::Exists => match toks.get(1)? {
+            Token::Name(name) if name.chars().next()?.is_lowercase() => {
+                if let Some((wff, rem_toks)) = parse_e3(toks.get(2..)?) {
+                    return Some((Wff::Exists(name.to_owned(), Box::new(wff)), rem_toks));
+                }
+                None
             }
-            _ => Err("when parsing an exists: expected the name of a variable to quantify \
-                      over, got something else. Note that variables start with lowercase letters"
-                .to_string()),
+            _ => None,
         },
-        Token::Bottom => Ok((Wff::Bottom, &toks[1..])),
-        _ => {
-            Err("when parsing logical expression: expected a proposition/predicate \
-                 name, a negation, left parenthesis, forall, exists or bottom, got something else."
-                .to_string())
-        }
+        Token::Bottom => Some((Wff::Bottom, &toks[1..])),
+        _ => None,
     }
 }
 
-fn parse_term(toks: &[Token]) -> Result<(Term, &[Token]), String> {
-    match toks.first() {
-        Some(Token::Name(name)) => {
-            if let Ok((terms, rem_toks)) = parse_arg_list(&toks[1..]) {
-                Ok((Term::FuncApp(name.to_string(), terms), rem_toks))
+fn parse_term(toks: &[Token]) -> Option<(Term, &[Token])> {
+    match toks.first()? {
+        Token::Name(name) => {
+            if let Some((terms, rem_toks)) = parse_arg_list(&toks[1..]) {
+                Some((Term::FuncApp(name.to_string(), terms), rem_toks))
             } else {
-                Ok((Term::Atomic(name.to_string()), &toks[1..]))
+                Some((Term::Atomic(name.to_string()), &toks[1..]))
             }
         }
-        _ => Err(
-            "expected term (i.e. variable, constant, or function application), got something else"
-                .to_string(),
-        ),
+        _ => None,
     }
 }
 
-fn parse_arg_list(toks: &[Token]) -> Result<(Vec<Term>, &[Token]), String> {
-    if toks.first().unwrap_or(&Token::Bottom) != &Token::LPar {
-        return Err("when parsing an argument list: expected (, found something else".to_string());
+fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
+    if toks.first()? != &Token::LPar {
+        return None;
     }
 
     let mut terms: Vec<Term> = vec![];
 
-    let (term, mut rem_toks) = parse_term(&toks[1..])?;
+    if let Some((term, mut rem_toks)) = parse_term(&toks[1..]) {
+        terms.push(term);
+        while rem_toks.first()? == &Token::Comma {
+            if let Some((term2, rem_rem_toks)) = parse_term(rem_toks.get(1..)?) {
+                terms.push(term2);
+                rem_toks = rem_rem_toks;
+            } else {
+                return None;
+            }
+        }
 
-    terms.push(term);
-    while rem_toks.first().unwrap_or(&Token::Bottom) == &Token::Comma {
-        let (term2, rem_rem_toks) = parse_term(&rem_toks[1..])?;
-        terms.push(term2);
-        rem_toks = rem_rem_toks;
-    }
-
-    if rem_toks.first().unwrap_or(&Token::Bottom) == &Token::RPar {
-        Ok((terms, &rem_toks[1..]))
+        if rem_toks.first()? == &Token::RPar {
+            Some((terms, &rem_toks[1..]))
+        } else {
+            None
+        }
     } else {
-        Err("when parsing argument list: expected (<term>{,<term>}), but did not find the closing bracket )".to_string())
+        None
     }
 }
 
