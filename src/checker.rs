@@ -754,14 +754,16 @@ impl Proof {
             if let Some(wff) = &l.sentence {
                 if self.can_reference(referencing_line, requested_line) {
                     Ok(wff)
+                } else if requested_line < referencing_line {
+                    Err(format!("Line {referencing_line}: line {requested_line} is referenced in the justification, but this is not allowed, because line {requested_line} is inside an already closed subproof."))
                 } else {
-                    Err(format!("Error: the justification of line {referencing_line} references line {requested_line}, but this is not allowed (for example because line {requested_line} is inside an already closed subproof)."))
+                    Err(format!("Line {referencing_line}: line {requested_line} is referenced in the justification, but this is not allowed, because line {requested_line} does not come before line {referencing_line}."))
                 }
             } else {
-                Err(format!("Error: in the justification of line {referencing_line}, line {requested_line} is being referred to, but this line does not contain a sentence."))
+                Err(format!("Line {referencing_line}: line {requested_line} is being referenced in the justification, but that line does not contain a sentence."))
             }
         } else {
-            Err(format!("Error: in the justification of line {referencing_line}, line {requested_line} is being referred to, but this line does not exist."))
+            Err(format!("Line {referencing_line}: line {requested_line} is being referenced in the justification, but that line does not exist."))
         }
     }
 
