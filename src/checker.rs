@@ -1149,7 +1149,7 @@ impl Proof {
                     if let Wff::Equals(subst_old, subst_new) =
                         self.get_wff_at_line(curr_line_num, *m)?
                     {
-                        if substitution_applied_wff_zero_or_more_times(
+                        if substitution_applied_wff_one_or_more_times(
                             self.get_wff_at_line(curr_line_num, *n)?,
                             curr_wff,
                             (subst_old, subst_new),
