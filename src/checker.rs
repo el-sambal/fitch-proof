@@ -1336,6 +1336,7 @@ fn substitution_applied_term_zero_or_more_times(a: &Term, b: &Term, subst: (&Ter
         (Term::FuncApp(f1_name, args1), Term::FuncApp(f2_name, args2)) => {
             (subst) == (a, b)
                 || (f1_name == f2_name
+                    && args1.len() == args2.len()
                     && zip(args1, args2).all(|(arg1, arg2)| {
                         substitution_applied_term_zero_or_more_times(arg1, arg2, subst)
                     }))
@@ -1385,6 +1386,7 @@ fn substitution_applied_wff_zero_or_more_times(a: &Wff, b: &Wff, subst: (&Term, 
 
         (Wff::PredApp(p1, args1), Wff::PredApp(p2, args2)) => {
             p1 == p2
+                && args1.len() == args2.len()
                 && zip(args1, args2)
                     .all(|(t1, t2)| substitution_applied_term_zero_or_more_times(t1, t2, subst))
         }

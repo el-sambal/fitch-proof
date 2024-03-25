@@ -159,14 +159,23 @@ fn test_equals_elim_15() {
     assert!(!fitch_proof::proof_is_correct(proof));
 }
 #[test]
-fn test_equals_elim_16() {
+fn test_equals_elim_16a() {
     let proof = "
 1 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
 2 | f(a,c,b)=f(a,c,b)
   | ---
 3 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
 ";
-    // not correct: substitution needs to be applied at least once
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_16b() {
+    let proof = "
+1 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | f(a,b,c)=f(a,b,c)
+  | ---
+3 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
+";
     assert!(!fitch_proof::proof_is_correct(proof));
 }
 #[test]
@@ -254,6 +263,36 @@ fn test_equals_elim_24() {
 fn test_equals_elim_25() {
     let proof = "
 1 | P(f(a,f(a,h(a),b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))=f(a,c,h(a))
+  | ---
+3 | P(f(a,f(a,c,h(a)),f(a,c,f(a,a,b))), g(f(c,b,a),f(a,c,h(a)))) =Elim:1,2
+";
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_26() {
+    let proof = "
+1 | P(a, g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))=f(a,c,h(a))
+  | ---
+3 | P(a, g(f(c,b,a),f(a,c,h(a)))) =Elim:1,2
+";
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_27() {
+    let proof = "
+1 | P(f(a,f(a,c,h(a),b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))=f(a,c,h(a))
+  | ---
+3 | P(f(a,f(a,c,h(a)),f(a,c,f(a,a,b))), g(f(c,b,a),f(a,c,h(a)))) =Elim:1,2
+";
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_28() {
+    let proof = "
+1 | P(f(a,f(a,c,h(a)),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
 2 | g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))=f(a,c,h(a))
   | ---
 3 | P(f(a,f(a,c,h(a)),f(a,c,f(a,a,b))), g(f(c,b,a),f(a,c,h(a)))) =Elim:1,2
