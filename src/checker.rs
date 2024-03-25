@@ -151,10 +151,14 @@ impl Proof {
                 .map(|r| r.unwrap_err()),
         );
 
+        // check that user doesn't use boxed constant outside the subproof and that user does not
+        // introduce the same boxed constant twice in nested subproofs, and that boxed constants
+        // are actually constants (not variables or predicates or ...)
         if let Err(errs) = self.check_boxed_constant_outside_subproof() {
             errors.extend(errs);
         }
 
+        // check that last line is top-level
         if self.last_line_is_inside_subproof() {
             let lln = self.last_line_num();
             errors.push(format!("Line {lln}: last line of proof should not be inside subproof"));
