@@ -395,13 +395,13 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
             if let (
                 Some(Token::Number(line_num)),
                 Some(Token::ConseqVertBar(depth)),
-                wff,
                 justific,
+                wff,
             ) = (
                 toks_before_justification.first(),
                 toks_before_justification.get(1),
-                parse_logical_expr(toks_before_justification.get(2..).unwrap_or(&[]))?,
                 parse_justification(toks_justification)?,
+                parse_logical_expr(toks_before_justification.get(2..).unwrap_or(&[]))?,
             ) {
                 Ok(ProofLine {
                     line_num: Some(*line_num),
