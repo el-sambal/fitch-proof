@@ -14,7 +14,7 @@ pub fn check_proof(proof_lines: Vec<ProofLine>) -> ProofResult {
 
 /* ------------------ PRIVATE -------------------- */
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum ProofUnit {
     NumberedProofLineInference(usize),
     NumberedProofLinePremiseWithoutBoxedConstant(usize),
@@ -112,6 +112,13 @@ impl Proof {
             }
         }
 
+        if !self.proof_starts_with_premises_and_fitch_bar() {
+            errors.push(
+                "Each proof should start start with zero or more premises, followed by a Fitch bar"
+                    .to_string(),
+            );
+        }
+
         errors.extend(
             self.line_numbers_missing_justification()
                 .iter()
@@ -147,6 +154,17 @@ impl Proof {
             errors.sort();
             ProofResult::Error(errors)
         }
+    }
+
+    // returns true iff the proof starts with zero or more premises (without boxed constant)
+    // followed by a Fitch bar.
+    fn proof_starts_with_premises_and_fitch_bar(&self) -> bool {
+        self.units.iter().any(|u| *u == ProofUnit::FitchBarLine)
+            && self
+                .units
+                .iter()
+                .take_while(|u| **u != ProofUnit::FitchBarLine)
+                .all(|u| matches!(*u, ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(..)))
     }
 
     // This function gives you the ProofLine at line number line_num. It does not care about who
