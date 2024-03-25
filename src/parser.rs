@@ -148,7 +148,7 @@ fn parse_logical_expr(toks: &[Token]) -> Result<Wff, String> {
             // there should be no remaining tokens!
             return Ok(wff);
         } else {
-            return Err("failed when trying to parse logical expression".to_string());
+            return Err("failed to parse logical expression".to_string());
         }
     }
     Err("failed to parse logical expression".to_string())
