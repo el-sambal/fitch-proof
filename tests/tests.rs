@@ -1,4 +1,266 @@
 #[test]
+fn test_equals_elim_1() {
+    let proof = "
+1 | a=b
+  | ---
+2 | b=b   =Intro
+3 | b=a   =Elim:2,1
+";
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_2() {
+    let proof = "
+1 | a=b
+  | ---
+2 | a=a   =Intro
+3 | b=a   =Elim:2,1
+";
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_3() {
+    let proof = "
+1 | a=b
+  | ---
+2 | a=a   =Intro
+3 | b=a   =Elim:1,2
+";
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_4() {
+    let proof = "
+1 | a=b
+  | ---
+2 | a=a   =Intro
+3 | a=a   =Elim:2,1
+";
+    // not correct, because substitution has to be applied ONE or more times
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_5() {
+    let proof = "
+1 | a=a
+  | ---
+2 | a=a   =Intro
+3 | a=a   =Elim:2,1
+";
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_6() {
+    let proof = "
+1 | b=b
+  | ---
+2 | a=a   =Intro
+3 | a=a   =Elim:2,1
+";
+    // not correct, because substitution has to be applied ONE or more times
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_7() {
+    let proof = "
+1 | P(a,b,c,a,b,c,a,b,c,a,b,c)
+2 | a=b
+  | ---
+3 | P(a,b,c,a,b,c,a,b,c,a,b,c)  =Elim: 1,2
+";
+    // not correct, because substitution has to be applied ONE or more times
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_8() {
+    let proof = "
+1 | P(a,b,c,a,b,c,a,b,c,a,b,c)
+2 | a=b
+  | ---
+3 | P(a,b,c,a,b,c,b,b,c,a,b,c)  =Elim: 1,2
+";
+    // correct: substituting once
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_9() {
+    let proof = "
+1 | P(a,b,c,a,b,c,a,b,c,a,b,c)
+2 | a=b
+  | ---
+3 | P(a,b,c,a,b,c,b,b,c,b,b,c)  =Elim: 1,2
+";
+    // correct: substituting twice
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_10() {
+    let proof = "
+1 | P(a,b,c,a,b,c,a,b,c,a,b,c)
+2 | a=b
+  | ---
+3 | P(b,b,c,a,b,c,b,b,c,b,b,c)  =Elim: 1,2
+";
+    // correct: substituting thrice
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_11() {
+    let proof = "
+1 | P(a,b,c,a,b,c,a,b,c,a,b,c)
+2 | a=b
+  | ---
+3 | P(b,b,c,b,b,c,b,b,c,b,b,c)  =Elim: 1,2
+";
+    // correct: substituting four times
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_12() {
+    let proof = "
+1 | P(a,b,c,a,b,c,a,b,c,a,b,c)
+2 | a=b
+  | ---
+3 | P(b,b,c,a,b,c,b,a,c,b,b,c)  =Elim: 1,2
+";
+    // not correct: substituting a->b three times, but also substituting b->a once
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_13() {
+    let proof = "
+1 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | a=b
+  | ---
+3 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
+";
+    // not correct: substitution needs to be applied at least once
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_14() {
+    let proof = "
+1 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | a=a
+  | ---
+3 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
+";
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_15() {
+    let proof = "
+1 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | d=d
+  | ---
+3 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
+";
+    // not correct: substitution needs to be applied at least once
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_16() {
+    let proof = "
+1 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | f(a,c,b)=f(a,c,b)
+  | ---
+3 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
+";
+    // not correct: substitution needs to be applied at least once
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_17() {
+    let proof = "
+1 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | f(a,c,b)=f(a,c,h(a))
+  | ---
+3 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
+";
+    // not correct: substitution needs to be applied at least once
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_18() {
+    let proof = "
+1 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | f(a,c,b)=f(a,c,h(a))
+  | ---
+3 | P(f(a,f(a,c,h(a)),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
+";
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_19() {
+    let proof = "
+1 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | f(a,c,b)=f(a,c,h(a))
+  | ---
+3 | P(f(a,f(a,h(a),c),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
+";
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_20() {
+    let proof = "
+1 | P(f(a,f(a,h(a),b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | f(a,h(a),b)=f(a,c,h(a))
+  | ---
+3 | P(f(a,f(a,c,h(a)),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
+";
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_21() {
+    let proof = "
+1 | P(f(a,f(a,hello(a),b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | f(a,h(a),b)=f(a,c,h(a))
+  | ---
+3 | P(f(a,f(a,c,h(a)),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
+";
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_22() {
+    let proof = "
+1 | P(f(a,f(a,h(a),b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | f(a,h(a),b)=f(a,c,h(a))
+  | ---
+3 | P(f(a,f(a,c,h(a)),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
+";
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_23() {
+    let proof = "
+1 | P(f(a,f(a,h(a),b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | f(a,h(a),b)=f(a,c,h(a))
+  | ---
+3 | P(f(a,f(a,c,h(b)),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
+";
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_24() {
+    let proof = "
+1 | P(f(a,f(a,h(a),b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | f(a,h(a),b)=f(a,c,h(a))
+  | ---
+3 | P(f(a,f(a,c,hello(a)),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
+";
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_25() {
+    let proof = "
+1 | P(f(a,f(a,h(a),b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))))
+2 | g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c)))=f(a,c,h(a))
+  | ---
+3 | P(f(a,f(a,c,h(a)),f(a,c,f(a,a,b))), g(f(c,b,a),f(a,c,h(a)))) =Elim:1,2
+";
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
 fn test_closed_term_substitution_1() {
     let proof = "
 1 | ∀x ∃y P(x,y)

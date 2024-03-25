@@ -1402,6 +1402,43 @@ fn substitution_applied_wff_zero_or_more_times(a: &Wff, b: &Wff, subst: (&Term, 
     }
 }
 
+// returns true iff term b can be obtained from term a by applying
+// the substitution subst *one or more* times.
+fn substitution_applied_term_one_or_more_times(a: &Term, b: &Term, subst: (&Term, &Term)) -> bool {
+    (a != b && substitution_applied_term_zero_or_more_times(a, b, subst))
+        || (a == b && subst.0 == subst.1 && term_contains_term(a, subst.0))
+}
+
+// returns true iff wff b can be obtained from wff a by applying
+// the substitution subst *one or more* times.
+fn substitution_applied_wff_one_or_more_times(a: &Wff, b: &Wff, subst: (&Term, &Term)) -> bool {
+    (a != b && substitution_applied_wff_zero_or_more_times(a, b, subst))
+        || (a == b && subst.0 == subst.1 && wff_contains_term(a, subst.0))
+}
+
+// returns true iff term a contains term b at least once (or term a and b are syntactically equal)
+fn term_contains_term(a: &Term, b: &Term) -> bool {
+    match &a {
+        Term::Atomic(_) => a == b,
+        Term::FuncApp(_, args) => a == b || args.iter().any(|arg| term_contains_term(arg, b)),
+    }
+}
+
+// returns true iff wff a contains term b at least once
+fn wff_contains_term(a: &Wff, b: &Term) -> bool {
+    match &a {
+        Wff::Bottom | Wff::Atomic(_) => false,
+        Wff::Or(li) | Wff::And(li) => li.iter().any(|l| wff_contains_term(l, b)),
+        Wff::Not(w) => wff_contains_term(w, b),
+        Wff::Implies(w1, w2) | Wff::Bicond(w1, w2) => {
+            wff_contains_term(w1, b) || wff_contains_term(w2, b)
+        }
+        Wff::Equals(t1, t2) => term_contains_term(t1, b) || term_contains_term(t2, b),
+        Wff::Forall(_, w) | Wff::Exists(_, w) => wff_contains_term(w, b),
+        Wff::PredApp(_, args) => args.iter().any(|arg| term_contains_term(arg, b)),
+    }
+}
+
 // applies a substitution everywhere and returns the resulting wff.
 // Note that this substitution must be trivial: that is, the substitution
 // must be of the form <term1> -> <term2> where <term1> is an atomic term,
