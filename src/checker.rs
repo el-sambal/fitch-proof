@@ -105,6 +105,8 @@ impl Proof {
     // order to assess the validity of a proof.
     fn is_fully_correct(&self) -> ProofResult {
         let mut errors: Vec<String> = vec![]; // here we accumulate all errors
+
+        // check that user applied proof rule correctly everywhere
         for line in &self.lines {
             if let Err(err) = self.check_line(line) {
                 println!("{err}");
@@ -126,12 +128,15 @@ impl Proof {
             );
         }
 
+        // check that all inferences have justification
         errors.extend(
             self.line_numbers_missing_justification()
                 .iter()
                 .map(|n| format!("Line {n}: missing justification").to_string()),
         );
 
+        // check that all variables are bound, that user doesn't have nested quantifiers over the
+        // same variable and that users don't quantify over a constant
         errors.extend(
             self.lines
                 .iter()
@@ -333,6 +338,8 @@ impl Proof {
         }
     }
 
+    // check that all variables are bound, that user doesn't have nested quantifiers over the
+    // same variable and that users don't quantify over a constant
     fn check_variable_scoping_issues(&self, wff: &Wff, line_num: usize) -> Result<(), String> {
         fn check_variable_scoping_issues_helper(
             proof: &Proof,
