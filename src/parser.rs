@@ -148,7 +148,7 @@ fn parse_logical_expr(toks: &[Token]) -> Result<Wff, String> {
             // there should be no remaining tokens!
             return Ok(wff);
         } else {
-            return Err("found garbage tokens after logical expression".to_string());
+            return Err("failed when trying to parse logical expression".to_string());
         }
     }
     Err("failed to parse logical expression".to_string())
@@ -388,7 +388,7 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
                     toks_justification = &toks[colon_index - 2..];
                 }
                 _ => {
-                    return Err(format!("failed to parse justification. Expected \'Reit\', \'Intro\' or \'Elim\', found {name}. Note that capitalization matters, only the first letter must be uppercase and the others should be lowercase."));
+                    return Err(format!("failed to parse justification. Expected \'Reit\', \'Intro\' or \'Elim\', found \'{name}\'. Note that capitalization matters!"));
                 }
             }
 
