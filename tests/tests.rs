@@ -1385,7 +1385,7 @@ fn test_funny_bicond_and_no_premises() {
     assert!(proof_is_correct_ultra_pedantic(proof));
 }
 #[test]
-fn test_no_fitch_bar() {
+fn test_no_fitch_bar_1() {
     let proof = "
 1 | ∀x P(x)
 2 | ⊥
@@ -1394,6 +1394,29 @@ fn test_no_fitch_bar() {
   | | --
 4 | | P(d)     ∀Elim:1
 5 | ∀x P(x)    ∀Intro:3-4
+";
+
+    assert!(!proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_no_fitch_bar_2() {
+    let proof = "
+1 | ∀x P(x)
+2 | ⊥
+3 | | [d]
+  | | --
+4 | | P(d)     ∀Elim:1
+5 | ∀x P(x)    ∀Intro:3-4
+";
+
+    assert!(!proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_no_fitch_bar_3() {
+    let proof = "
+1 | ∀x P(x)
+2 | ⊥
+3 | ∀x P(x)    Reit:1
 ";
 
     assert!(!proof_is_correct_ultra_pedantic(proof));
