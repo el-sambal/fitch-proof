@@ -112,6 +112,7 @@ impl Proof {
             }
         }
 
+        // check that proof starts with zero or more premises, followed by a Fitch bar
         if !self.units.iter().any(|u| *u == ProofUnit::FitchBarLine)
             || !self
                 .units
