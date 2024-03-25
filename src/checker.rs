@@ -1159,7 +1159,7 @@ impl Proof {
                             Err(format!(
                                 "Line {curr_line_num}: the rule =Elim:{n},{m} \
                             is used, but is is impossible to obtain line {curr_line_num} \
-                            from line {n} by substituting some occurrences of <term1> by \
+                            from line {n} by substituting one or more occurrences of <term1> by \
                             <term2>, where line {m} is <term1> = <term2>"
                             ))
                         }
