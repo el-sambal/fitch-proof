@@ -1404,13 +1404,6 @@ fn substitution_applied_wff_zero_or_more_times(a: &Wff, b: &Wff, subst: (&Term, 
     }
 }
 
-// returns true iff term b can be obtained from term a by applying
-// the substitution subst *one or more* times.
-fn substitution_applied_term_one_or_more_times(a: &Term, b: &Term, subst: (&Term, &Term)) -> bool {
-    (a != b && substitution_applied_term_zero_or_more_times(a, b, subst))
-        || (a == b && subst.0 == subst.1 && term_contains_term(a, subst.0))
-}
-
 // returns true iff wff b can be obtained from wff a by applying
 // the substitution subst *one or more* times.
 fn substitution_applied_wff_one_or_more_times(a: &Wff, b: &Wff, subst: (&Term, &Term)) -> bool {
