@@ -1,6 +1,5 @@
 use crate::data::*;
-use std::collections::HashSet;
-use std::iter::once;
+use std::collections::{HashMap, HashSet};
 use std::iter::zip;
 
 type Scope = Vec<(Vec<usize>, Vec<(usize, usize)>)>;
@@ -95,13 +94,14 @@ impl Proof {
         );
 
         // check that all variables are bound, that user doesn't have nested quantifiers over the
-        // same variable and that users don't quantify over a constant
+        // same variable and that users don't quantify over a constant, and that the user does not make
+        // a function with the name of a variable
         errors.extend(
             self.lines
                 .iter()
                 .filter(|line| line.sentence.is_some())
                 .map(|line| {
-                    self.check_variable_scoping_issues(
+                    self.check_variable_scoping_naming_issues(
                         line.sentence.as_ref().unwrap(),
                         line.line_num.unwrap(),
                     )
@@ -109,6 +109,10 @@ impl Proof {
                 .filter(|r| r.is_err())
                 .map(|r| r.unwrap_err()),
         );
+
+        // check that user does not use a symbol to denote both a constant and a function, and that
+        // arities of function symbols are consistent throughout the proof.
+        errors.extend(self.generate_arity_errors());
 
         // check that user doesn't use boxed constant outside the subproof and that user does not
         // introduce the same boxed constant twice in nested subproofs, and that boxed constants
@@ -344,9 +348,14 @@ impl Proof {
     }
 
     // check that all variables are bound, that user doesn't have nested quantifiers over the
-    // same variable and that users don't quantify over a constant
-    fn check_variable_scoping_issues(&self, wff: &Wff, line_num: usize) -> Result<(), String> {
-        fn check_variable_scoping_issues_helper(
+    // same variable and that users don't quantify over a constant, and that the user does not make
+    // a function with the name of a variable
+    fn check_variable_scoping_naming_issues(
+        &self,
+        wff: &Wff,
+        line_num: usize,
+    ) -> Result<(), String> {
+        fn check_variable_scoping_naming_issues_helper(
             proof: &Proof,
             wff: &Wff,
             line_num: usize,
@@ -356,7 +365,7 @@ impl Proof {
                 Wff::Bottom => Ok(()),
                 Wff::Atomic(_) => Ok(()),
                 Wff::PredApp(_, args) => args.iter().try_for_each(|a| {
-                    check_variable_scoping_issues_helper_term(
+                    check_variable_scoping_naming_issues_helper_term(
                         proof,
                         a,
                         line_num,
@@ -364,27 +373,40 @@ impl Proof {
                     )
                 }),
                 Wff::And(li) | Wff::Or(li) => li.iter().try_for_each(|x| {
-                    check_variable_scoping_issues_helper(proof, x, line_num, bound_vars_in_scope)
+                    check_variable_scoping_naming_issues_helper(
+                        proof,
+                        x,
+                        line_num,
+                        bound_vars_in_scope,
+                    )
                 }),
                 Wff::Implies(w1, w2) | Wff::Bicond(w1, w2) => {
-                    check_variable_scoping_issues_helper(proof, w1, line_num, bound_vars_in_scope)
-                        .and(check_variable_scoping_issues_helper(
-                            proof,
-                            w2,
-                            line_num,
-                            bound_vars_in_scope,
-                        ))
+                    check_variable_scoping_naming_issues_helper(
+                        proof,
+                        w1,
+                        line_num,
+                        bound_vars_in_scope,
+                    )
+                    .and(check_variable_scoping_naming_issues_helper(
+                        proof,
+                        w2,
+                        line_num,
+                        bound_vars_in_scope,
+                    ))
                 }
-                Wff::Not(w) => {
-                    check_variable_scoping_issues_helper(proof, w, line_num, bound_vars_in_scope)
-                }
-                Wff::Equals(t1, t2) => check_variable_scoping_issues_helper_term(
+                Wff::Not(w) => check_variable_scoping_naming_issues_helper(
+                    proof,
+                    w,
+                    line_num,
+                    bound_vars_in_scope,
+                ),
+                Wff::Equals(t1, t2) => check_variable_scoping_naming_issues_helper_term(
                     proof,
                     t1,
                     line_num,
                     bound_vars_in_scope,
                 )
-                .and(check_variable_scoping_issues_helper_term(
+                .and(check_variable_scoping_naming_issues_helper_term(
                     proof,
                     t2,
                     line_num,
@@ -400,7 +422,7 @@ impl Proof {
                         ))
                     } else {
                         bound_vars_in_scope.push(var.to_string());
-                        let res = check_variable_scoping_issues_helper(
+                        let res = check_variable_scoping_naming_issues_helper(
                             proof,
                             wff,
                             line_num,
@@ -413,7 +435,7 @@ impl Proof {
             }
         }
 
-        fn check_variable_scoping_issues_helper_term(
+        fn check_variable_scoping_naming_issues_helper_term(
             proof: &Proof,
             term: &Term,
             line_num: usize,
@@ -429,17 +451,65 @@ impl Proof {
                         Ok(())
                     }
                 }
-                Term::FuncApp(_, args) => args.iter().try_for_each(|a| {
-                    check_variable_scoping_issues_helper_term(
-                        proof,
-                        a,
-                        line_num,
-                        bound_vars_in_scope,
-                    )
-                }),
+                Term::FuncApp(name, args) => args
+                    .iter()
+                    .try_for_each(|a| {
+                        check_variable_scoping_naming_issues_helper_term(
+                            proof,
+                            a,
+                            line_num,
+                            bound_vars_in_scope,
+                        )
+                    })
+                    .and(if proof.allowed_variable_names.contains(name) {
+                        Err(format!(
+                            "Line {line_num}: you cannot have a function called \
+                                     {name}, because {name} is a reserved name for variables."
+                        ))
+                    } else {
+                        Ok(())
+                    }),
             }
         }
-        check_variable_scoping_issues_helper(self, wff, line_num, &mut vec![])
+        check_variable_scoping_naming_issues_helper(self, wff, line_num, &mut vec![])
+    }
+
+    // this function first calls get_arity_set(), and then it returns either Ok(()) or a bunch of
+    // error messages, if for example from the arity set it can be determined that the user has
+    // functions of inconsistent arity throughout the proof (e.g. they use both f(x) and f(x,x)) or
+    // if for example the user uses some letter both as a constant name and a function name.
+    fn generate_arity_errors(&self) -> Vec<String> {
+        let mut errors: Vec<String> = vec![];
+        let mut arity_map: HashMap<String, Vec<usize>> = HashMap::from([]);
+        for (name, arity) in self.get_arity_set() {
+            println!("{name}:{arity}");
+            if !arity_map.contains_key(&name) {
+                arity_map.insert(name.to_string(), vec![]);
+            }
+            if !arity_map.get(&name).unwrap().contains(&arity) {
+                arity_map.get_mut(&name).unwrap().push(arity);
+            }
+        }
+        for (name, mut arities) in arity_map {
+            if arities.is_empty() {
+                panic!();
+            }
+            if arities.len() > 1 {
+                arities.sort();
+                if arities.contains(&0) {
+                    if name.chars().next().unwrap().is_lowercase() {
+                        errors.push(format!("Error: it seems like you use the name \'{name}\' both to denote a constant, and to denote a function symbol"));
+                    } else {
+                        errors.push(format!("Error: it seems like you use the name \'{name}\' both to denote a nullary predicate (\'no inputs\'), and to denote a non-nullary predicate"));
+                    }
+                } else if name.chars().next().unwrap().is_lowercase() {
+                    errors.push(format!("Error: it seems like \'{name}\' is meant to denote a function symbol, but throughout the proof, its arity is inconsistent. The found arities are {arities:?}"))
+                } else {
+                    errors.push(format!("Error: it seems like \'{name}\' is meant to denote a predicate, but throughout the proof, its arity is inconsistent. The found arities are {arities:?}"))
+                }
+            }
+        }
+        errors
     }
 
     // this function returns the "arity set" for a proof. This is a HashSet containing instances of
@@ -462,8 +532,8 @@ impl Proof {
                 Term::FuncApp(str, args) => args
                     .iter()
                     .map(|t| get_arity_set_term(proof, t))
-                    .chain(std::iter::once(HashSet::from([(str.to_owned(), 0)])))
-                    .flat_map(|it| it.clone())
+                    .chain(std::iter::once(HashSet::from([(str.to_owned(), args.len())])))
+                    .flatten()
                     .collect(),
             }
         }
@@ -485,7 +555,7 @@ impl Proof {
                 Wff::PredApp(str, args) => args
                     .iter()
                     .map(|t| get_arity_set_term(proof, t))
-                    .chain(std::iter::once(HashSet::from([(str.to_owned(), 0)])))
+                    .chain(std::iter::once(HashSet::from([(str.to_owned(), args.len())])))
                     .flatten()
                     .collect(),
                 Wff::Atomic(str) => HashSet::from([(str.to_owned(), 0)]),

@@ -1496,3 +1496,173 @@ fn test_simple() {
 
     assert!(proof_is_correct_ultra_pedantic(proof));
 }
+#[test]
+fn test_arities_1() {
+    let proof = "
+1 | a=b(a)
+2 | ⊥
+  | ---
+3 | a=b    ⊥Elim: 2
+";
+
+    assert!(!proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_arities_2() {
+    let proof = "
+1 | a=a(a)
+2 | ⊥
+  | ---
+3 | a=b    ⊥Elim: 2
+";
+
+    assert!(!proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_arities_3() {
+    let proof = "
+1 | a=a(a)
+2 | ⊥
+  | ---
+3 | a=a(a)    ⊥Elim: 2
+";
+
+    assert!(!proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_arities_4() {
+    let proof = "
+1 | f(a,b)=f(b,a)
+2 | ⊥
+  | ---
+3 | f(a,b,c)=f(c,b,a)    ⊥Elim: 2
+";
+
+    assert!(!proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_arities_5() {
+    let proof = "
+1 | P(a,b,c,d,e,f,g,h,i,j)
+2 | ⊥
+  | ---
+3 | P    ⊥Elim: 2
+";
+
+    assert!(!proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_arities_6() {
+    let proof = "
+1 | P(a,b,c,d,e,f,g,h,i,j)
+2 | ⊥
+  | ---
+3 | P(a)    ⊥Elim: 2
+";
+
+    assert!(!proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_arities_7() {
+    let proof = "
+1 | p(a)=p(a)
+2 | ⊥
+  | ---
+3 | P(a,a,a,a)    ⊥Elim: 2
+";
+
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_arities_8() {
+    let proof = "
+1 | P(a,b,c,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,e,f,g,h,i,j)
+2 | ⊥
+  | ---
+3 | f(a)=a    ⊥Elim: 2
+";
+
+    // not correct, because f is both const and funcsymb
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_arities_9() {
+    let proof = "
+1 | P(a,b,c,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,e,g,g,h,i,j)
+2 | ⊥
+  | ---
+3 | f(a)=a    ⊥Elim: 2
+";
+
+    // correct
+    assert!(fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_no_function_symbol_has_variable_name_1() {
+    let proof = "
+1 | P(a,b,c,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,e,g,g,h,i,j)
+2 | ⊥
+  | ---
+3 | x(a)=a    ⊥Elim: 2
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_no_function_symbol_has_variable_name_2() {
+    let proof = "
+1 | P(a,b,c,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,e,g,g,h,i,j)
+2 | ⊥
+  | ---
+3 | x(a)=y(a)    ⊥Elim: 2
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_no_function_symbol_has_variable_name_3() {
+    let proof = "
+1 | P(a,b,c,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,e,g,g,h,i,j)
+2 | ⊥
+  | ---
+3 | x(a)=x(a)    ⊥Elim: 2
+";
+
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_no_function_symbol_has_variable_name_4() {
+    let proof = "
+1 | P(a,b,c,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,e,g,g,h,i,j)
+2 | ⊥
+  | ---
+3 | x(a)=x(a,a)    ⊥Elim: 2
+";
+    // check that the thing does not panic, because here there are two things wrong: not only a
+    // function symbol with a variable name, but also an arity mismatch.
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_no_function_symbol_has_variable_name_5() {
+    let proof = "
+1 | ∀x P(x,b,x,d,x,d,d,d,x,d,d,d,d,d,x,d,d,d,d,x,d,d,d,d,e,g,g,h,i,j)
+2 | ⊥
+  | ---
+3 | x(a)=x(a,a)    ⊥Elim: 2
+";
+    // check that the thing does not panic, because here there are two things wrong: not only a
+    // function symbol with a variable name, but also an arity mismatch.
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_no_function_symbol_has_variable_name_6() {
+    let proof = "
+1 | ∀x P(x,b,x,d,x,d,d,d,x,d,d,d,d,d,x,d,d,d,d,x,d,d,d,d,e,g,g,h,i,j)
+2 | ⊥
+  | ---
+3 | x(a)=f(a,a)    ⊥Elim: 2
+";
+    // check that the thing does not panic, because here there are two things wrong: not only a
+    // function symbol with a variable name, but also an arity mismatch.
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
