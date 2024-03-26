@@ -479,6 +479,71 @@ fn test_boxed_constant_subproof() {
     assert!(!proof_is_correct_ultra_pedantic(proof));
 }
 #[test]
+fn test_boxed_const() {
+    let proof = "
+1 | ⊥
+  | ---
+2 | | [a]
+  | | ---
+3 | | ⊥     Reit:1
+4 | ⊥       Reit:1
+";
+
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_no_boxed_proposition() {
+    let proof = "
+1 | ⊥
+  | ---
+2 | | [A]
+  | | ---
+3 | | ⊥     Reit:1
+4 | ⊥       Reit:1
+";
+
+    assert!(!proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_no_boxed_var() {
+    let proof = "
+1 | ⊥
+  | ---
+2 | | [x]
+  | | ---
+3 | | ⊥     Reit:1
+4 | ⊥       Reit:1
+";
+
+    assert!(!proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_no_boxed_funcapp() {
+    let proof = "
+1 | ⊥
+  | ---
+2 | | [f(a)]
+  | | ---
+3 | | ⊥     Reit:1
+4 | ⊥       Reit:1
+";
+
+    assert!(!proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_no_boxed_funcapp_2() {
+    let proof = "
+1 | ⊥
+  | ---
+2 | | [f(x)]
+  | | ---
+3 | | ⊥     Reit:1
+4 | ⊥       Reit:1
+";
+
+    assert!(!proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
 fn test_multiple_exists_1() {
     let proof = "
 1 | ∃x∃y P(x,y)

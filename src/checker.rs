@@ -496,6 +496,17 @@ impl Proof {
             .by_ref()
             .filter_map(|line| line.sentence.as_ref())
             .flat_map(|t| get_arity_set_wff(self, t))
+            .chain(
+                // also include boxed constants in arity set!
+                self.lines
+                    .iter()
+                    .by_ref()
+                    .filter_map(|line| line.constant_between_square_brackets.as_ref())
+                    .map(|c| match c {
+                        Term::Atomic(str) => (str.to_owned(), 0),
+                        Term::FuncApp(..) => panic!("boxed constant cannot be FuncApp"),
+                    }),
+            )
             .collect()
     }
 
