@@ -495,7 +495,7 @@ impl Proof {
             .iter()
             .by_ref()
             .filter_map(|line| line.sentence.as_ref())
-            .flat_map(|t| get_arity_set_wff(self, t).clone())
+            .flat_map(|t| get_arity_set_wff(self, t))
             .collect()
     }
 
