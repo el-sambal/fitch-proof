@@ -470,11 +470,9 @@ impl Proof {
         fn get_arity_set_wff(proof: &Proof, wff: &Wff) -> HashSet<(String, usize)> {
             match wff {
                 Wff::Bottom => HashSet::from([]),
-                Wff::And(li) | Wff::Or(li) => li
-                    .iter()
-                    .map(|t| get_arity_set_wff(proof, t))
-                    .flat_map(|it| it.clone())
-                    .collect(),
+                Wff::And(li) | Wff::Or(li) => {
+                    li.iter().flat_map(|t| get_arity_set_wff(proof, t)).collect()
+                }
                 Wff::Forall(_, w) | Wff::Exists(_, w) | Wff::Not(w) => get_arity_set_wff(proof, w),
                 Wff::Bicond(w1, w2) | Wff::Implies(w1, w2) => get_arity_set_wff(proof, w1)
                     .into_iter()
@@ -488,7 +486,7 @@ impl Proof {
                     .iter()
                     .map(|t| get_arity_set_term(proof, t))
                     .chain(std::iter::once(HashSet::from([(str.to_owned(), 0)])))
-                    .flat_map(|it| it.clone())
+                    .flatten()
                     .collect(),
                 Wff::Atomic(str) => HashSet::from([(str.to_owned(), 0)]),
             }
