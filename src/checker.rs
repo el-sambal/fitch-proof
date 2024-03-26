@@ -1,5 +1,6 @@
 use crate::data::*;
 use std::collections::HashSet;
+use std::iter::once;
 use std::iter::zip;
 
 type Scope = Vec<(Vec<usize>, Vec<(usize, usize)>)>;
@@ -53,48 +54,6 @@ impl Proof {
                 "u".to_string(),
             ]),
         })
-    }
-
-    // returns a vector containing all line numbers which correspond to "premises"
-    // that are found between a Fitch bar line and a SubproofOpen.
-    // (these would be the inferences with missing justification, but they are parsed as premises)
-    fn line_numbers_missing_justification(&self) -> Vec<usize> {
-        let mut res = vec![]; // store what we're going to return
-        let mut expect_justification = false;
-        for i in 0..self.units.len() {
-            match self.units[i] {
-                ProofUnit::FitchBarLine => {
-                    expect_justification = true;
-                }
-                ProofUnit::SubproofOpen => {
-                    expect_justification = false;
-                }
-                ProofUnit::SubproofClose => {}
-                ProofUnit::NumberedProofLineInference(_) => {}
-                ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(num)
-                | ProofUnit::NumberedProofLinePremiseWithBoxedConstant(num) => {
-                    if expect_justification {
-                        res.push(num);
-                    }
-                }
-            }
-        }
-
-        res
-    }
-
-    // returns true iff the last line (that has a line number) is inside subproof
-    fn last_line_is_inside_subproof(&self) -> bool {
-        // unwrap should work, since this proof is half-well-structured, so it should contain some
-        // line that contains a logical sentence or boxed constant (i.e. it has a line number).
-        self.lines.iter().rev().find(|&pl| pl.sentence.is_some()).unwrap().depth > 1
-    }
-
-    // returns the line number of the last sentence of the proof.
-    fn last_line_num(&self) -> usize {
-        // unwrap should work, since this proof is half-well-structured, so it should contain some
-        // line that contains a logical sentence or boxed constant (i.e. it has a line number).
-        self.lines.iter().rev().find(|&pl| pl.line_num.is_some()).unwrap().line_num.unwrap()
     }
 
     // given a Proof (which 'by definition' is already HALF-well-structured,
@@ -170,6 +129,48 @@ impl Proof {
             errors.sort();
             ProofResult::Error(errors)
         }
+    }
+
+    // returns a vector containing all line numbers which correspond to "premises"
+    // that are found between a Fitch bar line and a SubproofOpen.
+    // (these would be the inferences with missing justification, but they are parsed as premises)
+    fn line_numbers_missing_justification(&self) -> Vec<usize> {
+        let mut res = vec![]; // store what we're going to return
+        let mut expect_justification = false;
+        for i in 0..self.units.len() {
+            match self.units[i] {
+                ProofUnit::FitchBarLine => {
+                    expect_justification = true;
+                }
+                ProofUnit::SubproofOpen => {
+                    expect_justification = false;
+                }
+                ProofUnit::SubproofClose => {}
+                ProofUnit::NumberedProofLineInference(_) => {}
+                ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(num)
+                | ProofUnit::NumberedProofLinePremiseWithBoxedConstant(num) => {
+                    if expect_justification {
+                        res.push(num);
+                    }
+                }
+            }
+        }
+
+        res
+    }
+
+    // returns true iff the last line (that has a line number) is inside subproof
+    fn last_line_is_inside_subproof(&self) -> bool {
+        // unwrap should work, since this proof is half-well-structured, so it should contain some
+        // line that contains a logical sentence or boxed constant (i.e. it has a line number).
+        self.lines.iter().rev().find(|&pl| pl.sentence.is_some()).unwrap().depth > 1
+    }
+
+    // returns the line number of the last sentence of the proof.
+    fn last_line_num(&self) -> usize {
+        // unwrap should work, since this proof is half-well-structured, so it should contain some
+        // line that contains a logical sentence or boxed constant (i.e. it has a line number).
+        self.lines.iter().rev().find(|&pl| pl.line_num.is_some()).unwrap().line_num.unwrap()
     }
 
     // This function gives you the ProofLine at line number line_num. It does not care about who
@@ -439,6 +440,65 @@ impl Proof {
             }
         }
         check_variable_scoping_issues_helper(self, wff, line_num, &mut vec![])
+    }
+
+    // this function returns the "arity set" for a proof. This is a HashSet containing instances of
+    // (name,arity), where name can be the name of any constant, funtion symbol, atomic proposition
+    // or predicate, and arity is its arity. Note that the arity of constants and atomic
+    // propositions is defined to be 0. Note that variables are not included in the arity set.
+    //
+    // Note that if you find for example both f(x,x) and f(x,x,x) in the same proof, then BOTH the
+    // entries ("f", 2) and ("f", 3) will be included in the arity set.
+    fn get_arity_set(&self) -> HashSet<(String, usize)> {
+        fn get_arity_set_term(proof: &Proof, term: &Term) -> HashSet<(String, usize)> {
+            match term {
+                Term::Atomic(str) => {
+                    if proof.allowed_variable_names.contains(str) {
+                        HashSet::from([])
+                    } else {
+                        HashSet::from([(str.to_owned(), 0)])
+                    }
+                }
+                Term::FuncApp(str, args) => args
+                    .iter()
+                    .map(|t| get_arity_set_term(proof, t))
+                    .chain(std::iter::once(HashSet::from([(str.to_owned(), 0)])))
+                    .flat_map(|it| it.clone())
+                    .collect(),
+            }
+        }
+        fn get_arity_set_wff(proof: &Proof, wff: &Wff) -> HashSet<(String, usize)> {
+            match wff {
+                Wff::Bottom => HashSet::from([]),
+                Wff::And(li) | Wff::Or(li) => li
+                    .iter()
+                    .map(|t| get_arity_set_wff(proof, t))
+                    .flat_map(|it| it.clone())
+                    .collect(),
+                Wff::Forall(_, w) | Wff::Exists(_, w) | Wff::Not(w) => get_arity_set_wff(proof, w),
+                Wff::Bicond(w1, w2) | Wff::Implies(w1, w2) => get_arity_set_wff(proof, w1)
+                    .into_iter()
+                    .chain(get_arity_set_wff(proof, w2))
+                    .collect(),
+                Wff::Equals(t1, t2) => get_arity_set_term(proof, t1)
+                    .into_iter()
+                    .chain(get_arity_set_term(proof, t2))
+                    .collect(),
+                Wff::PredApp(str, args) => args
+                    .iter()
+                    .map(|t| get_arity_set_term(proof, t))
+                    .chain(std::iter::once(HashSet::from([(str.to_owned(), 0)])))
+                    .flat_map(|it| it.clone())
+                    .collect(),
+                Wff::Atomic(str) => HashSet::from([(str.to_owned(), 0)]),
+            }
+        }
+        self.lines
+            .iter()
+            .by_ref()
+            .filter_map(|line| line.sentence.as_ref())
+            .flat_map(|t| get_arity_set_wff(self, t).clone())
+            .collect()
     }
 
     // checks if a proof is HALF-well-structured.
