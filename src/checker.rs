@@ -5,8 +5,11 @@ use std::iter::zip;
 type Scope = Vec<(Vec<usize>, Vec<(usize, usize)>)>;
 
 // Name says it all :)
-pub fn check_proof(proof_lines: Vec<ProofLine>) -> ProofResult {
-    match Proof::construct(proof_lines) {
+pub fn check_proof(
+    proof_lines: Vec<ProofLine>,
+    allowed_variable_names: HashSet<String>,
+) -> ProofResult {
+    match Proof::construct(proof_lines, allowed_variable_names) {
         Err(err) => ProofResult::FatalError(err),
         Ok(proof) => proof.is_fully_correct(),
     }
@@ -16,9 +19,9 @@ pub fn check_proof(proof_lines: Vec<ProofLine>) -> ProofResult {
 
 #[derive(Debug, PartialEq)]
 enum ProofUnit {
-    NumberedProofLineInference(usize),
-    NumberedProofLinePremiseWithoutBoxedConstant(usize),
-    NumberedProofLinePremiseWithBoxedConstant(usize),
+    NumberedProofLineInference(usize), // usize is line number
+    NumberedProofLinePremiseWithoutBoxedConstant(usize), // usize is line number
+    NumberedProofLinePremiseWithBoxedConstant(usize), // usize is line number
     FitchBarLine,
     SubproofOpen,
     SubproofClose,
@@ -37,7 +40,10 @@ impl Proof {
     // proof is not even half-well-structured, and further analysis is impossible. After
     // construct()ing the proof, you should proof.is_fully_correct() it. The combination of these two things
     // allows you to assess the correctness of a proof.
-    fn construct(proof_lines: Vec<ProofLine>) -> Result<Proof, String> {
+    fn construct(
+        proof_lines: Vec<ProofLine>,
+        allowed_variable_names: HashSet<String>,
+    ) -> Result<Proof, String> {
         let units = Self::lines_to_units(&proof_lines)?;
         Self::is_half_well_structured(&units)?; // check if proof is HALF-well-structured
         let scope = Self::determine_scope(&units);
@@ -46,12 +52,7 @@ impl Proof {
             lines: proof_lines,
             scope,
             units,
-            allowed_variable_names: HashSet::from([
-                "x".to_string(),
-                "y".to_string(),
-                "z".to_string(),
-                "u".to_string(),
-            ]),
+            allowed_variable_names,
         })
     }
 

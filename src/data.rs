@@ -32,7 +32,7 @@ pub enum Justification {
     BottomElim(usize),
     ImpliesIntro((usize, usize)),
     ImpliesElim(usize, usize),
-    BicondIntro((usize, usize),(usize,usize)),
+    BicondIntro((usize, usize), (usize, usize)),
     BicondElim(usize, usize),
     EqualsIntro,
     EqualsElim(usize, usize),
