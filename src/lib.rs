@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-
+use parser::parse_allowed_variable_names;
 use parser::parse_fitch_proof;
 use wasm_bindgen::prelude::*;
 mod checker;
@@ -9,19 +8,12 @@ use crate::data::ProofResult;
 
 macro_rules! default_variable_names {
     () => {
-        HashSet::from(["x".to_string(), "y".to_string(), "z".to_string(), "u".to_string()])
+        "x,y,z,u"
     };
 }
 
 #[wasm_bindgen]
-pub fn check_proof(proof: &str) -> String {
-    check_proof_with_defined_set_variable_names(proof, default_variable_names!())
-}
-
-pub fn check_proof_with_defined_set_variable_names(
-    proof: &str,
-    allowed_variable_names: HashSet<String>,
-) -> String {
+pub fn check_proof(proof: &str, allowed_variable_names: &str) -> String {
     let res = check_proof_to_proofresult(proof, allowed_variable_names);
     match res {
         ProofResult::Correct => "The proof is correct!".to_string(),
@@ -30,13 +22,10 @@ pub fn check_proof_with_defined_set_variable_names(
     }
 }
 
-pub fn check_proof_to_proofresult(
-    proof: &str,
-    allowed_variable_names: HashSet<String>,
-) -> ProofResult {
-    match parse_fitch_proof(proof) {
-        Ok(proof_lines) => checker::check_proof(proof_lines, allowed_variable_names),
-        Err(err) => ProofResult::FatalError(err),
+pub fn check_proof_to_proofresult(proof: &str, allowed_variable_names: &str) -> ProofResult {
+    match (parse_fitch_proof(proof), parse_allowed_variable_names(allowed_variable_names)) {
+        (Ok(proof_lines), Ok(variable_names)) => checker::check_proof(proof_lines, variable_names),
+        (Err(err), _) | (_, Err(err)) => ProofResult::FatalError(err),
     }
 }
 

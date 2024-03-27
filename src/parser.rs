@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::iter;
 use std::iter::from_fn;
 
@@ -8,7 +9,7 @@ pub fn parse_fitch_proof(proof: &str) -> Result<Vec<ProofLine>, String> {
     proof
         .lines()
         .filter(|s| !s.is_empty())
-        .map(|x| match lex_logical_expr(x) {
+        .map(|x| match lex(x) {
             Ok(toks) => match parse_proof_line(&toks) {
                 Ok(line) => {
                     last_line_num = line.line_num.unwrap_or(last_line_num);
@@ -19,6 +20,31 @@ pub fn parse_fitch_proof(proof: &str) -> Result<Vec<ProofLine>, String> {
             Err(err) => Err(format!("lexer failure near line {}: {}", last_line_num + 1, err)),
         })
         .collect()
+}
+
+pub fn parse_allowed_variable_names(allowed_var_names: &str) -> Result<HashSet<String>, String> {
+    let toks = lex(allowed_var_names)?;
+    let err_str = "the list of allowed variable names could not be parsed".to_string();
+    if toks.iter().any(|tok| !matches!(tok, Token::Name(_) | Token::Comma)) {
+        return Err(err_str);
+    }
+    let mut allowed_variable_names: HashSet<String> = HashSet::from([]);
+    let mut rem_toks = toks.as_slice();
+
+    loop {
+        let Some(Token::Name(var_name)) = rem_toks.first() else {
+            return Err(err_str);
+        };
+        allowed_variable_names.insert(var_name.to_string());
+        if rem_toks.len() == 1 {
+            break;
+        }
+        if !matches!(rem_toks[1], Token::Comma) {
+            return Err(err_str);
+        }
+        rem_toks = &rem_toks[2..];
+    }
+    Ok(allowed_variable_names)
 }
 
 /* ----------------- PRIVATE -------------------*/
@@ -46,7 +72,7 @@ enum Token {
     RSqBracket,
 }
 
-fn lex_logical_expr(input: &str) -> Result<Vec<Token>, String> {
+fn lex(input: &str) -> Result<Vec<Token>, String> {
     let mut toks: Vec<Token> = Vec::new();
     let mut input_iter = input.chars().peekable();
 
@@ -763,7 +789,7 @@ fn parse_justification(toks: &[Token]) -> Result<Justification, String> {
 mod tests {
     use super::*;
     fn parse_logical_expression_string(expr: &str) -> Option<Wff> {
-        if let Ok(toks) = lex_logical_expr(expr) {
+        if let Ok(toks) = lex(expr) {
             return match parse_logical_expr(&toks) {
                 Ok(expr) => Some(expr),
                 _ => None,
@@ -774,7 +800,7 @@ mod tests {
     #[test]
     fn test_lexer_1() {
         assert_eq!(
-            lex_logical_expr("   THIs is SoMe  SiLLY  test  "),
+            lex("   THIs is SoMe  SiLLY  test  "),
             Ok(vec![
                 Token::Name("THIs".to_owned()),
                 Token::Name("is".to_owned()),
@@ -788,7 +814,7 @@ mod tests {
     #[test]
     fn test_lexer_2() {
         assert_eq!(
-            lex_logical_expr("   THIs is SoMe  S∀LLY  test  "),
+            lex("   THIs is SoMe  S∀LLY  test  "),
             Ok(vec![
                 Token::Name("THIs".to_owned()),
                 Token::Name("is".to_owned()),
@@ -803,7 +829,7 @@ mod tests {
     #[test]
     fn test_lexer_3() {
         assert_eq!(
-            lex_logical_expr("   THIs is SoMe  S∀ ∀∀LLY  test  "),
+            lex("   THIs is SoMe  S∀ ∀∀LLY  test  "),
             Ok(vec![
                 Token::Name("THIs".to_owned()),
                 Token::Name("is".to_owned()),
@@ -820,7 +846,7 @@ mod tests {
     #[test]
     fn test_lexer_4() {
         assert_eq!(
-            lex_logical_expr("∀x(P(x,a)→P(a,x))∨ (A∧ ItIsSunny∧¬∃y P(y,y))∨a=c"),
+            lex("∀x(P(x,a)→P(a,x))∨ (A∧ ItIsSunny∧¬∃y P(y,y))∨a=c"),
             Ok(vec![
                 Token::Forall,
                 Token::Name("x".to_owned()),
@@ -1071,87 +1097,87 @@ mod tests {
     #[test]
     fn test_justification_parser_or_elim() {
         assert_eq!(
-            parse_justification(&lex_logical_expr("∨Elim:42,43-44").unwrap()),
+            parse_justification(&lex("∨Elim:42,43-44").unwrap()),
             Ok(Justification::OrElim(42, vec![(43, 44)]))
         );
         assert_eq!(
-            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48").unwrap()),
+            parse_justification(&lex("∨Elim:42,43-44,45-46,47-48").unwrap()),
             Ok(Justification::OrElim(42, vec![(43, 44), (45, 46), (47, 48)]))
         );
         assert!(
-            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47,48").unwrap()).is_err()
+            parse_justification(&lex("∨Elim:42,43-44,45-46,47,48").unwrap()).is_err()
         );
         assert!(
-            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46-47-48").unwrap()).is_err()
+            parse_justification(&lex("∨Elim:42,43-44,45-46-47-48").unwrap()).is_err()
         );
         assert!(
-            parse_justification(&lex_logical_expr("∨Elim:42-43-44,45-46,47-48").unwrap()).is_err()
+            parse_justification(&lex("∨Elim:42-43-44,45-46,47-48").unwrap()).is_err()
         );
         assert!(
-            parse_justification(&lex_logical_expr("∨Elim-42,43-44,45-46,47-48").unwrap()).is_err()
+            parse_justification(&lex("∨Elim-42,43-44,45-46,47-48").unwrap()).is_err()
         );
         assert!(
-            parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,").unwrap()).is_err()
+            parse_justification(&lex("∨Elim:42,43-44,45-46,47-48,").unwrap()).is_err()
         );
-        assert!(parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,49").unwrap())
+        assert!(parse_justification(&lex("∨Elim:42,43-44,45-46,47-48,49").unwrap())
             .is_err());
-        assert!(parse_justification(&lex_logical_expr("∨Elim:42,43-44,45-46,47-48,49-").unwrap())
+        assert!(parse_justification(&lex("∨Elim:42,43-44,45-46,47-48,49-").unwrap())
             .is_err());
-        assert!(parse_justification(&lex_logical_expr("∨Elim:42").unwrap()).is_err());
+        assert!(parse_justification(&lex("∨Elim:42").unwrap()).is_err());
     }
     #[test]
     fn test_justification_parser_and_intro() {
         assert_eq!(
-            parse_justification(&lex_logical_expr("∧Intro:42,43,44").unwrap()),
+            parse_justification(&lex("∧Intro:42,43,44").unwrap()),
             Ok(Justification::AndIntro(vec![42, 43, 44]))
         );
         assert_eq!(
-            parse_justification(&lex_logical_expr("∧Intro:42,43").unwrap()),
+            parse_justification(&lex("∧Intro:42,43").unwrap()),
             Ok(Justification::AndIntro(vec![42, 43]))
         );
         assert_eq!(
-            parse_justification(&lex_logical_expr("∧Intro:42").unwrap()),
+            parse_justification(&lex("∧Intro:42").unwrap()),
             // TODO: decide whether i want to keep behavior like this (a "unary conjunction")
             Ok(Justification::AndIntro(vec![42]))
         );
-        assert!((parse_justification(&lex_logical_expr("∧Intro:42-43").unwrap()).is_err()));
-        assert!((parse_justification(&lex_logical_expr("∧Intro:").unwrap()).is_err()));
+        assert!((parse_justification(&lex("∧Intro:42-43").unwrap()).is_err()));
+        assert!((parse_justification(&lex("∧Intro:").unwrap()).is_err()));
     }
     #[test]
     fn test_justification_parser_exists_elim() {
         assert_eq!(
-            parse_justification(&lex_logical_expr("∃Elim:42,43-44").unwrap()),
+            parse_justification(&lex("∃Elim:42,43-44").unwrap()),
             Ok(Justification::ExistsElim(42, (43, 44)))
         );
     }
     #[test]
     fn test_justification_parser_implies_elim() {
         assert_eq!(
-            parse_justification(&lex_logical_expr("→Elim:42,43").unwrap()),
+            parse_justification(&lex("→Elim:42,43").unwrap()),
             Ok(Justification::ImpliesElim(42, 43))
         );
-        assert!((parse_justification(&lex_logical_expr("→Elim:42,43,").unwrap()).is_err()));
+        assert!((parse_justification(&lex("→Elim:42,43,").unwrap()).is_err()));
     }
 
     #[test]
     fn test_parser_bug_infinite_loop_1() {
-        let toks = lex_logical_expr("(f(g(a),=b)").unwrap();
+        let toks = lex("(f(g(a),=b)").unwrap();
         let _ = parse_e2(&toks);
     }
 
     #[test]
     fn test_parser_bug_infinite_loop_2() {
-        let toks = lex_logical_expr("f(g(a),=b").unwrap();
+        let toks = lex("f(g(a),=b").unwrap();
         let _ = parse_e1(&toks);
     }
     #[test]
     fn test_parser_bug_infinite_loop_3() {
-        let toks = lex_logical_expr("f(g(a),=b").unwrap();
+        let toks = lex("f(g(a),=b").unwrap();
         let _ = parse_term(&toks);
     }
     #[test]
     fn test_parser_bug_infinite_loop_4() {
-        let toks = lex_logical_expr("(g(a),=b").unwrap();
+        let toks = lex("(g(a),=b").unwrap();
         let _ = parse_arg_list(&toks);
     }
 }
