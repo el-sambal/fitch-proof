@@ -1666,3 +1666,43 @@ fn test_no_function_symbol_has_variable_name_6() {
     // function symbol with a variable name, but also an arity mismatch.
     assert!(!fitch_proof::proof_is_correct(proof));
 }
+#[test]
+fn test_equals_elim_diff_number_of_conjs_1() {
+    let proof = "
+1 | a=b ∧ c=d ∧ e=f
+2 | b=c
+  | ---
+3 | a=c ∧ c=d           =Elim:1,2
+";
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_diff_number_of_conjs_2() {
+    let proof = "
+1 | a=b ∧ c=d
+2 | b=c
+  | ---
+3 | a=c ∧ c=d ∧ e=f           =Elim:1,2
+";
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_diff_number_of_disjs_1() {
+    let proof = "
+1 | a=b ∨ c=d ∨ e=f
+2 | b=c
+  | ---
+3 | a=c ∨ c=d           =Elim:1,2
+";
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
+#[test]
+fn test_equals_elim_diff_number_of_disjs_2() {
+    let proof = "
+1 | a=b ∨ c=d 
+2 | b=c
+  | ---
+3 | a=c ∨ c=d ∨ e=f         =Elim:1,2
+";
+    assert!(!fitch_proof::proof_is_correct(proof));
+}
