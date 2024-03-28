@@ -1514,25 +1514,19 @@ fn substitution_applied_term_zero_or_more_times(a: &Term, b: &Term, subst: (&Ter
 // the substitution subst *zero or more* times.
 fn substitution_applied_wff_zero_or_more_times(a: &Wff, b: &Wff, subst: (&Term, &Term)) -> bool {
     match (&a, &b) {
-        (Wff::And(conjs1), Wff::And(conjs2)) => zip(conjs1, conjs2)
-            .all(|(c1, c2)| substitution_applied_wff_zero_or_more_times(c1, c2, subst)),
-        (Wff::And(_), _) => false,
-
-        (Wff::Or(disjs1), Wff::Or(disjs2)) => zip(disjs1, disjs2)
-            .all(|(d1, d2)| substitution_applied_wff_zero_or_more_times(d1, d2, subst)),
-        (Wff::Or(_), _) => false,
-
-        (Wff::Implies(ante1, conseq1), Wff::Implies(ante2, conseq2)) => {
-            substitution_applied_wff_zero_or_more_times(ante1, ante2, subst)
-                && substitution_applied_wff_zero_or_more_times(conseq1, conseq2, subst)
+        (Wff::And(li1), Wff::And(li2)) | (Wff::Or(li1), Wff::Or(li2)) => {
+            li1.len() == li2.len()
+                && zip(li1, li2)
+                    .all(|(w1, w2)| substitution_applied_wff_zero_or_more_times(w1, w2, subst))
         }
-        (Wff::Implies(..), _) => false,
+        (Wff::And(_) | Wff::Or(_), _) => false,
 
-        (Wff::Bicond(w11, w12), Wff::Bicond(w21, w22)) => {
+        (Wff::Bicond(w11, w12), Wff::Bicond(w21, w22))
+        | (Wff::Implies(w11, w12), Wff::Implies(w21, w22)) => {
             substitution_applied_wff_zero_or_more_times(w11, w21, subst)
                 && substitution_applied_wff_zero_or_more_times(w12, w22, subst)
         }
-        (Wff::Bicond(..), _) => false,
+        (Wff::Bicond(..) | Wff::Implies(..), _) => false,
 
         (Wff::Not(w1), Wff::Not(w2)) => substitution_applied_wff_zero_or_more_times(w1, w2, subst),
         (Wff::Not(..), _) => false,
@@ -1557,15 +1551,11 @@ fn substitution_applied_wff_zero_or_more_times(a: &Wff, b: &Wff, subst: (&Term, 
         }
         (Wff::PredApp(..), _) => false,
 
-        (Wff::Forall(var1, wff1), Wff::Forall(var2, wff2)) => {
+        (Wff::Forall(var1, wff1), Wff::Forall(var2, wff2))
+        | (Wff::Exists(var1, wff1), Wff::Exists(var2, wff2)) => {
             var1 == var2 && substitution_applied_wff_zero_or_more_times(wff1, wff2, subst)
         }
-        (Wff::Forall(..), _) => false,
-
-        (Wff::Exists(var1, wff1), Wff::Exists(var2, wff2)) => {
-            var1 == var2 && substitution_applied_wff_zero_or_more_times(wff1, wff2, subst)
-        }
-        (Wff::Exists(..), _) => false,
+        (Wff::Forall(..) | Wff::Exists(..), _) => false,
     }
 }
 
