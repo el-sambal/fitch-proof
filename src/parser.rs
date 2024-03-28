@@ -35,6 +35,12 @@ pub fn parse_allowed_variable_names(allowed_var_names: &str) -> Result<HashSet<S
         let Some(Token::Name(var_name)) = rem_toks.first() else {
             return Err(err_str);
         };
+        if !var_name.chars().next().unwrap().is_ascii_lowercase() {
+            return Err("the list of allowed variable names could not be parsed: a variable name must start with a lowercase letter".to_string());
+        }
+        if allowed_variable_names.contains(var_name) {
+            return Err("the list of allowed variable names contains duplicates".to_string());
+        }
         allowed_variable_names.insert(var_name.to_string());
         if rem_toks.len() == 1 {
             break;

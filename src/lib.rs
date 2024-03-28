@@ -8,7 +8,7 @@ use crate::data::ProofResult;
 
 macro_rules! default_variable_names {
     () => {
-        "x,y,z,u"
+        "x,y,z,u,v,w"
     };
 }
 

@@ -30,12 +30,17 @@
       let advanced_settings_are_visible = false;
       function toggle_show_advanced_settings() {
          advanced_settings_are_visible = !advanced_settings_are_visible;
-         document.getElementById("advanced-settings").hidden = !advanced_settings_are_visible;
+         document.getElementById("advanced-settings").style.visibility = advanced_settings_are_visible ? "visible" : "hidden";
       }
+
+      document.addEventListener('keydown', function (event) {
+         if (event.altKey && event.key === 's') {
+            toggle_show_advanced_settings();
+         }
+      });
 
       document.getElementById("proof-field").onkeyup = run;
       document.getElementById("allowed-variable-names").onkeyup = run;
-      document.getElementById("show-unshow-settings-button").onclick = toggle_show_advanced_settings;
       run();
    </script>
    <textarea style="border:4px solid black;border-radius: 10px;padding:8px;" rows=30 cols=90 id="proof-field">
@@ -123,13 +128,18 @@
    <br>
    <br>
 
-   <button id="show-unshow-settings-button">Show/hide advanced settings</button><br><br>
-   <div id="advanced-settings" hidden style="background-color: coral;border: 3px solid black;border-radius: 10px;">Here
-      are the advanced settings!
+   <div id="advanced-settings"
+      style="background-color: coral;border: 3px solid black;border-radius: 10px;visibility: hidden;">
+      <strong>Settings (do not change unless you really have a good reason)</strong>
       <br><br>
       List of strings that should be recognized as variables (separated by commas): <input id="allowed-variable-names"
-         value="x,y,z,u" />
-   </div>
+         value="x,y,z,u,v,w" /><br>
+      <em>(For example, using the default settings, having ∀x P(x) is allowed, but having ∀a P(a) is not, because a is
+         not used for variables. With this setting, you can change which strings should be seen as a variable. All other
+         strings that start with a lowercase letter will be seen as a constant or function symbol, depending on the
+         context in which they are found.)</em>
+   </div><br><br>
+   Press Alt+S to toggle visibility of settings
 </body>
 
 </html>
