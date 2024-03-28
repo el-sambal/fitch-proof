@@ -1070,23 +1070,17 @@ impl Proof {
                         for (disj, subprf) in zip(disjs, subproofs) {
                             let (s_begin, s_end) =
                                 self.get_subproof_at_lines(curr_line_num, *subprf)?;
-                            if s_begin.constant_between_square_brackets.is_some()
-                                || s_end.constant_between_square_brackets.is_some()
-                            // the last sentence (s_end) in a subproof can
-                            // never introduce a boxed constant, but user can input
-                            // weird things, so dont remove the check for s_end.
-                            {
+                            let (Some(s_begin_wff), Some(s_end_wff), None) = (
+                                &s_begin.sentence,
+                                &s_end.sentence,
+                                &s_begin.constant_between_square_brackets,
+                            ) else {
                                 return Err(format!(
                                     "Line {curr_line_num}: when using ∨Elim, \
                                  you cannot reference subproofs which \
                                  introduce a boxed constant."
                                 ));
-                            }
-                            // unwrap should work, because the only case in which .sentence is
-                            // None, is if it is a line that introduces a boxed constant, and we
-                            // just checked for that.
-                            let s_begin_wff = s_begin.sentence.as_ref().unwrap();
-                            let s_end_wff = s_end.sentence.as_ref().unwrap();
+                            };
                             if disj != s_begin_wff {
                                 return Err(format!(
                                     "Line {curr_line_num}: ∨Elim \
@@ -1115,47 +1109,45 @@ impl Proof {
                     }
                 }
                 Justification::ImpliesIntro((n, m)) => {
-                    if let Wff::Implies(a, b) = curr_wff {
-                        let (s_begin, s_end) =
-                            self.get_subproof_at_lines(curr_line_num, (*n, *m))?;
-                        if let (Some(s_begin_wff), Some(s_end_wff), None) = (
-                            &s_begin.sentence,
-                            &s_end.sentence,
-                            &s_begin.constant_between_square_brackets,
-                        ) {
-                            if **a != *s_begin_wff && **b == *s_end_wff {
-                                Err(format!(
-                                    "Line {curr_line_num}: →Intro is used, but \
-                                the premise of the referenced subproof does not match the \
-                                antecedent of the implication found in line {curr_line_num}."
-                                ))
-                            } else if **a == *s_begin_wff && **b != *s_end_wff {
-                                Err(format!(
-                                    "Line {curr_line_num}: →Intro is used, but \
-                                the last sentence of the referenced subproof does not match the \
-                                consequent of the implication found in line {curr_line_num}."
-                                ))
-                            } else if **a != *s_begin_wff && **b != *s_end_wff {
-                                Err(format!(
-                                    "Line {curr_line_num}: →Intro is used, but \
-                                the premise and last sentence of the referenced subproof \
-                                do not match the antecedent and the consequent, respectively, \
-                                of the implication found in line {curr_line_num}."
-                                ))
-                            } else {
-                                Ok(())
-                            }
-                        } else {
-                            Err(format!(
-                                "Line {curr_line_num}: when using →Intro, you \
-                        cannot reference a subproof that introduces a boxed constant."
-                            ))
-                        }
-                    } else {
-                        Err(format!(
+                    let Wff::Implies(a, b) = curr_wff else {
+                        return Err(format!(
                             "Line {curr_line_num}: →Intro is used, but \
                             the top-level connective of this sentence \
                             is not an implication."
+                        ));
+                    };
+                    let (s_begin, s_end) = self.get_subproof_at_lines(curr_line_num, (*n, *m))?;
+                    if let (Some(s_begin_wff), Some(s_end_wff), None) = (
+                        &s_begin.sentence,
+                        &s_end.sentence,
+                        &s_begin.constant_between_square_brackets,
+                    ) {
+                        if **a != *s_begin_wff && **b == *s_end_wff {
+                            Err(format!(
+                                "Line {curr_line_num}: →Intro is used, but \
+                                the premise of the referenced subproof does not match the \
+                                antecedent of the implication found in line {curr_line_num}."
+                            ))
+                        } else if **a == *s_begin_wff && **b != *s_end_wff {
+                            Err(format!(
+                                "Line {curr_line_num}: →Intro is used, but \
+                                the last sentence of the referenced subproof does not match the \
+                                consequent of the implication found in line {curr_line_num}."
+                            ))
+                        } else if **a != *s_begin_wff && **b != *s_end_wff {
+                            Err(format!(
+                                "Line {curr_line_num}: →Intro is used, but \
+                                the premise and last sentence of the referenced subproof \
+                                do not match the antecedent and the consequent, respectively, \
+                                of the implication found in line {curr_line_num}."
+                            ))
+                        } else {
+                            Ok(())
+                        }
+                    } else {
+                        Err(format!(
+                            "Line {curr_line_num}: when using →Intro, you \
+                        cannot reference a subproof that introduces a boxed constant."
                         ))
                     }
                 }
@@ -1311,27 +1303,27 @@ impl Proof {
                     Err(format!("Line {curr_line_num}: =Intro is wrongly used"))
                 }
                 Justification::EqualsElim(n, m) => {
-                    if let Wff::Equals(subst_old, subst_new) =
+                    let Wff::Equals(subst_old, subst_new) =
                         self.get_wff_at_line(curr_line_num, *m)?
-                    {
-                        if substitution_applied_wff_one_or_more_times(
-                            self.get_wff_at_line(curr_line_num, *n)?,
-                            curr_wff,
-                            (subst_old, subst_new),
-                        ) {
-                            Ok(())
-                        } else {
-                            Err(format!(
-                                "Line {curr_line_num}: the rule =Elim:{n},{m} \
-                            is used, but is is impossible to obtain line {curr_line_num} \
-                            from line {n} by substituting one or more occurrences of <term1> by \
-                            <term2>, where line {m} is <term1> = <term2>"
-                            ))
-                        }
+                    else {
+                        return Err(format!(
+                            "Line {curr_line_num}: the rule =Elim:{n},{m} \
+                                    is used, but line {m} is not of the form <term1> = <term2>"
+                        ));
+                    };
+
+                    if substitution_applied_wff_one_or_more_times(
+                        self.get_wff_at_line(curr_line_num, *n)?,
+                        curr_wff,
+                        (subst_old, subst_new),
+                    ) {
+                        Ok(())
                     } else {
                         Err(format!(
                             "Line {curr_line_num}: the rule =Elim:{n},{m} \
-                                    is used, but line {m} is not of the form <term1> = <term2>"
+                            is used, but is is impossible to obtain line {curr_line_num} \
+                            from line {n} by substituting one or more occurrences of <term1> by \
+                            <term2>, where line {m} is <term1> = <term2>"
                         ))
                     }
                 }
@@ -1359,81 +1351,77 @@ impl Proof {
                     Ok(())
                 }
                 Justification::ForallElim(n) => {
-                    if let Wff::Forall(var, ref_wff) = self.get_wff_at_line(curr_line_num, *n)? {
-                        if let Some((term1, term2)) =
-                            find_possible_trivial_substitution_wff(ref_wff, curr_wff)
-                        {
-                            if apply_trivial_substitution_everywhere_to_wff(
-                                ref_wff,
-                                (&term1, &term2),
-                            ) == *curr_wff
-                                && Term::Atomic(var.to_string()) == term1
-                            {
-                                return if self.is_closed_term(term2) {
-                                    Ok(())
-                                } else {
-                                    Err(format!(
-                                        "Line {curr_line_num}: the rule ∀Elim:{n} is used, \
-                                                but you did not substitute a *closed* term for \
-                                                all occurrences of the variable {var} in line {n}"
-                                    ))
-                                };
-                            }
-                        }
-                        Err(format!(
-                            "Line {curr_line_num}: the rule \
-                                        ∀Elim:{n} is used, but there is no \
-                                        appropriate substitution between line \
-                                        {n} and line {curr_line_num}"
-                        ))
-                    } else {
-                        Err(format!(
+                    let Wff::Forall(var, ref_wff) = self.get_wff_at_line(curr_line_num, *n)? else {
+                        return Err(format!(
                             "Line {curr_line_num}: the justification \
                                     ∀Elim:{n} is used, but line {n} is not a \
                                     universally quantified sentence at the top level"
-                        ))
-                    }
-                }
-                Justification::ExistsIntro(n) => {
-                    if let Wff::Exists(var, exists_curr_wff) = curr_wff {
-                        let ref_wff = self.get_wff_at_line(curr_line_num, *n)?;
-                        if let Some((term1, term2)) =
-                            find_possible_trivial_substitution_wff(exists_curr_wff, ref_wff)
+                        ));
+                    };
+                    if let Some((term1, term2)) =
+                        find_possible_trivial_substitution_wff(ref_wff, curr_wff)
+                    {
+                        if apply_trivial_substitution_everywhere_to_wff(ref_wff, (&term1, &term2))
+                            == *curr_wff
+                            && Term::Atomic(var.to_string()) == term1
                         {
-                            if substitution_applied_wff_zero_or_more_times(
-                                exists_curr_wff,
-                                ref_wff,
-                                (&term1, &term2),
-                            ) && Term::Atomic(var.to_string()) == term1
-                            {
-                                return if self.is_closed_term(term2) {
-                                    Ok(())
-                                } else {
-                                    Err(format!(
-                                        "Line {curr_line_num}: the rule ∃Intro:{n} is \
-                                                used, but the term in line {n} that you \
-                                                substitute {var} for in line {curr_line_num} \
-                                                is not a *closed* term"
-                                    ))
-                                };
-                            }
+                            return if self.is_closed_term(term2) {
+                                Ok(())
+                            } else {
+                                Err(format!(
+                                    "Line {curr_line_num}: the rule ∀Elim:{n} is used, \
+                                                but you did not substitute a *closed* term for \
+                                                all occurrences of the variable {var} in line {n}"
+                                ))
+                            };
                         }
-                        if **exists_curr_wff == *ref_wff {
-                            return Ok(());
-                        }
-                        Err(format!(
-                            "Line {curr_line_num}: the rule \
-                                        ∃Intro:{n} is used, but there is no \
+                    }
+                    Err(format!(
+                        "Line {curr_line_num}: the rule \
+                                        ∀Elim:{n} is used, but there is no \
                                         appropriate substitution between line \
                                         {n} and line {curr_line_num}"
-                        ))
-                    } else {
-                        Err(format!(
+                    ))
+                }
+                Justification::ExistsIntro(n) => {
+                    let Wff::Exists(var, exists_curr_wff) = curr_wff else {
+                        return Err(format!(
                             "Line {curr_line_num}: the justification \
                                     ∃Intro:{n} is used, but line {curr_line_num} is not an \
                                     existentially quantified sentence at the top level"
-                        ))
+                        ));
+                    };
+                    let ref_wff = self.get_wff_at_line(curr_line_num, *n)?;
+                    if let Some((term1, term2)) =
+                        find_possible_trivial_substitution_wff(exists_curr_wff, ref_wff)
+                    {
+                        if substitution_applied_wff_zero_or_more_times(
+                            exists_curr_wff,
+                            ref_wff,
+                            (&term1, &term2),
+                        ) && Term::Atomic(var.to_string()) == term1
+                        {
+                            return if self.is_closed_term(term2) {
+                                Ok(())
+                            } else {
+                                Err(format!(
+                                    "Line {curr_line_num}: the rule ∃Intro:{n} is \
+                                                used, but the term in line {n} that you \
+                                                substitute {var} for in line {curr_line_num} \
+                                                is not a *closed* term"
+                                ))
+                            };
+                        }
                     }
+                    if **exists_curr_wff == *ref_wff {
+                        return Ok(());
+                    }
+                    Err(format!(
+                        "Line {curr_line_num}: the rule \
+                                        ∃Intro:{n} is used, but there is no \
+                                        appropriate substitution between line \
+                                        {n} and line {curr_line_num}"
+                    ))
                 }
                 Justification::ExistsElim(n, (sb, se)) => {
                     let ref_wff = self.get_wff_at_line(curr_line_num, *n)?;
@@ -1494,20 +1482,19 @@ impl Proof {
 // returns true iff term b can be obtained from term a by applying
 // the substitution subst *zero or more* times.
 fn substitution_applied_term_zero_or_more_times(a: &Term, b: &Term, subst: (&Term, &Term)) -> bool {
-    match (&a, &b) {
-        (Term::Atomic(a_name), Term::Atomic(b_name)) => a_name == b_name || subst == (a, b),
-        (Term::Atomic(_), Term::FuncApp(..)) => subst == (a, b),
-        (Term::FuncApp(..), Term::Atomic(_)) => subst == (a, b),
-        (Term::FuncApp(f1_name, args1), Term::FuncApp(f2_name, args2)) => {
-            (subst) == (a, b)
-                || (f1_name == f2_name
+    subst == (a, b)
+        || a == b
+        || match (&a, &b) {
+            (Term::FuncApp(f1_name, args1), Term::FuncApp(f2_name, args2)) => {
+                f1_name == f2_name
                     && args1.len() == args2.len()
                     && zip(args1, args2).all(|(arg1, arg2)| {
                         substitution_applied_term_zero_or_more_times(arg1, arg2, subst)
-                    }))
-            // it's almost Haskell <3
+                    })
+                // it's almost Haskell <3
+            }
+            _ => false,
         }
-    }
 }
 
 // returns true iff wff b can be obtained from wff a by applying
