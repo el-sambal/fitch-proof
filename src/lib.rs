@@ -3,6 +3,7 @@ use parser::parse_fitch_proof;
 use wasm_bindgen::prelude::*;
 mod checker;
 mod data;
+mod formatter;
 mod parser;
 use crate::data::ProofResult;
 
@@ -31,4 +32,12 @@ pub fn check_proof_to_proofresult(proof: &str, allowed_variable_names: &str) -> 
 
 pub fn proof_is_correct(proof: &str) -> bool {
     matches!(check_proof_to_proofresult(proof, default_variable_names!()), ProofResult::Correct)
+}
+
+#[wasm_bindgen]
+pub fn format_proof(proof: &str) -> String {
+    match parse_fitch_proof(proof) {
+        Ok(lines) => formatter::format_proof(lines),
+        _ => proof.to_owned(),
+    }
 }

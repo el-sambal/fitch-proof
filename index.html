@@ -8,7 +8,7 @@
    <strong style="font-size:50px;">SUPER PROVER ULTRA++</strong><br>
    <a href="https://github.com/el-sambal/fitch-proof" style="color:blue;text-decoration: none;font-family:monospace">https://github.com/el-sambal/fitch-proof</a><br><br>
    <script type="module">
-      import init, { check_proof } from './pkg/fitch_proof.js';
+      import init, { check_proof, format_proof } from './pkg/fitch_proof.js';
       export async function run() {
          await init();
 
@@ -28,6 +28,12 @@
          console.log(res);
       }
 
+      function format() {
+         let formatted = format_proof(document.getElementById("proof-field").value);
+         document.getElementById("proof-field").value = formatted;
+         run();
+      }
+
       let advanced_settings_are_visible = false;
       function toggle_show_advanced_settings() {
          advanced_settings_are_visible = !advanced_settings_are_visible;
@@ -41,6 +47,7 @@
       });
 
       document.getElementById("proof-field").onkeyup = run;
+      document.getElementById("format-button").onclick = format;
       document.getElementById("allowed-variable-names").onkeyup = run;
       run();
    </script>
@@ -128,6 +135,8 @@
    <br>
    <br>
    <br>
+
+   <button id="format-button">Format proof</button>
 
    <div id="advanced-settings"
       style="background-color: coral;border: 3px solid black;border-radius: 10px;visibility: hidden;">
