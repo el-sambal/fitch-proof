@@ -18,7 +18,7 @@ pub fn format_proof(proof_lines: Vec<ProofLine>) -> String {
         })
         .collect();
 
-    pad_to_same_length(&mut line_strings);
+    pad_to_same_length(&mut line_strings, 1);
 
     for (line, line_string) in zip(&proof_lines, &mut line_strings) {
         line_string.push_str(&"| ".repeat(line.depth));
@@ -52,13 +52,13 @@ pub fn format_proof(proof_lines: Vec<ProofLine>) -> String {
 
 /* ------------------ PRIVATE -------------------- */
 
-// Given a slice of Strings, this function modifies it by padding all non-longest strings with
-// spaces so as to be equally long as the longest String found in the slice. After calling this
-// function, all strings in the slice have the same length.
-fn pad_to_same_length(strings: &mut [String]) {
+// Given a slice of Strings, this function modifies it by padding all strings with spaces so
+// as to be equally long as the longest String found in the slice, plus `extra` number of spaces.
+// After calling this function, all strings in the slice have the same length.
+fn pad_to_same_length(strings: &mut [String], extra: usize) {
     let longest_line_length = strings.iter().map(|x| x.chars().count()).max().unwrap();
     for string in &mut *strings {
-        let pad_width = longest_line_length - string.chars().count();
+        let pad_width = extra + longest_line_length - string.chars().count();
         string.push_str(&" ".repeat(pad_width));
     }
 }
