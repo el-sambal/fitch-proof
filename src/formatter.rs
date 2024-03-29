@@ -73,19 +73,43 @@ fn format_term(term: &Term) -> String {
 }
 
 fn format_wff(wff: &Wff) -> String {
-    match wff {
-        Wff::Bottom => "⊥".to_owned(),
-        Wff::Or(li) => format!("({})", li.iter().map(format_wff).collect::<Vec<_>>().join(" ∨ ")),
-        Wff::And(li) => format!("({})", li.iter().map(format_wff).collect::<Vec<_>>().join(" ∧ ")),
-        Wff::Not(w) => format!("¬{}", format_wff(w)),
-        Wff::Implies(w1, w2) => format!("({} → {})", format_wff(w1), format_wff(w2)),
-        Wff::Bicond(w1, w2) => format!("({} ↔ {})", format_wff(w1), format_wff(w2)),
-        Wff::Forall(s, w) => format!("∀{} {}", s, format_wff(w)),
-        Wff::Exists(s, w) => format!("∃{} {}", s, format_wff(w)),
-        Wff::PredApp(s, args) => {
-            format!("{}({})", s, args.iter().map(format_term).collect::<Vec<_>>().join(","))
+    fn wff_with_brackets(wff: &Wff) -> String {
+        match wff {
+            Wff::Bottom => "⊥".to_owned(),
+            Wff::Or(li) => {
+                format!("({})", li.iter().map(wff_with_brackets).collect::<Vec<_>>().join(" ∨ "))
+            }
+            Wff::And(li) => {
+                format!("({})", li.iter().map(wff_with_brackets).collect::<Vec<_>>().join(" ∧ "))
+            }
+            Wff::Not(w) => format!("¬{}", wff_with_brackets(w)),
+            Wff::Implies(w1, w2) => {
+                format!("({} → {})", wff_with_brackets(w1), wff_with_brackets(w2))
+            }
+            Wff::Bicond(w1, w2) => {
+                format!("({} ↔ {})", wff_with_brackets(w1), wff_with_brackets(w2))
+            }
+            Wff::Forall(s, w) => format!("∀{} {}", s, wff_with_brackets(w)),
+            Wff::Exists(s, w) => format!("∃{} {}", s, wff_with_brackets(w)),
+            Wff::PredApp(s, args) => {
+                format!("{}({})", s, args.iter().map(format_term).collect::<Vec<_>>().join(","))
+            }
+            Wff::Atomic(p) => p.to_string(),
+            Wff::Equals(t1, t2) => format!("({}={})", format_term(t1), format_term(t2)),
         }
-        Wff::Atomic(p) => p.to_string(),
-        Wff::Equals(t1, t2) => format!("{}={}", format_term(t1), format_term(t2)),
+    }
+    let wff_string = wff_with_brackets(wff);
+
+    // now we have a wff, but it will have outermost brackets in case the top level 'connective' was
+    // and, or, implies, bicond or equals. So we will have to remove those.
+
+    match wff {
+        Wff::And(..) | Wff::Or(..) | Wff::Implies(..) | Wff::Bicond(..) | Wff::Equals(..) => {
+            let mut it = wff_string.chars();
+            it.next();
+            it.next_back();
+            it.as_str().to_string()
+        }
+        _ => wff_string,
     }
 }
