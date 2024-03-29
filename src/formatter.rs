@@ -2,6 +2,9 @@ use std::iter::zip;
 
 use crate::data::*;
 
+// Formats a proof.
+//
+// PRECONDITION (panics otherwise): !proof_lines.is_empty()
 pub fn format_proof(proof_lines: Vec<ProofLine>) -> String {
     // here we build the formatted proof
     let mut line_strings: Vec<String> = proof_lines

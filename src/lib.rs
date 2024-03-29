@@ -37,7 +37,7 @@ pub fn proof_is_correct(proof: &str) -> bool {
 #[wasm_bindgen]
 pub fn format_proof(proof: &str) -> String {
     match parse_fitch_proof(proof) {
-        Ok(lines) => formatter::format_proof(lines),
+        Ok(lines) if !lines.is_empty() => formatter::format_proof(lines),
         _ => proof.to_owned(),
     }
 }
