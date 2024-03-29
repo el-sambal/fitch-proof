@@ -1,9 +1,16 @@
-// returns true if and only if the proof is correct, and is not correct anymore if any
-// non-whitespace non-dash character gets removed. This is a super pedantic sanity check, which is
-// also intended to help make sure that the parser does not panic in unexpected cases.
+// returns true if and only if for all proofs P in {the inputted proof, the inputted proof after
+// being formatted}, P is correct, and P is not correct anymore if any
+// non-whitespace non-dash character gets removed from P. This is a super pedantic sanity check, which is
+// also intended to help make sure that the parser does not panic in unexpected cases,
+// and to make sure that the proof formatter works as intended. So it is like 3 tests in one.
 // Note that it is possible to think of proofs which are correct, but not
 // ultra-pedantically-correct. However, for most practical tests this is not an issue. If it ever
 // is an issue, then just use a normal test for that proof and not an ultra-pedantic one.
+//
+// Note that if you want to assert that a proof is NOT correct, it is better not to use this
+// function!! Because this function might return false even if the proof seen as correct by the
+// program, which you don't want. So only use this function is you want to assert that a proof is
+// correct.
 fn proof_is_correct_ultra_pedantic(proof: &str) -> bool {
     (0..proof.chars().count()).all(|i| {
         proof.chars().nth(i) == Some('-')
@@ -24,6 +31,16 @@ fn proof_is_correct_ultra_pedantic(proof: &str) -> bool {
                 false
             }
     }) && fitch_proof::proof_is_correct(proof)
+        && fitch_proof::proof_is_correct(&fitch_proof::format_proof(proof))
+}
+
+// this is what you should call if you want to assert that a proof is not correct. It tests that
+// the proof itself is not correct, and tests also that it is still not correct if it has been gone
+// through the proof formatter. So it's two tests in one (also tests that formatter does not do
+// weird things).
+fn proof_is_not_correct_ultra_pedantic(proof: &str) -> bool {
+    !fitch_proof::proof_is_correct(proof)
+        && !fitch_proof::proof_is_correct(&fitch_proof::format_proof(proof))
 }
 
 #[test]
@@ -34,7 +51,7 @@ fn test_equals_elim_1() {
 2 | b=b   =Intro
 3 | b=a   =Elim:2,1
 ";
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_2() {
@@ -54,7 +71,7 @@ fn test_equals_elim_3() {
 2 | a=a   =Intro
 3 | b=a   =Elim:1,2
 ";
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_4() {
@@ -65,7 +82,7 @@ fn test_equals_elim_4() {
 3 | a=a   =Elim:2,1
 ";
     // not correct, because substitution has to be applied ONE or more times
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_5() {
@@ -86,7 +103,7 @@ fn test_equals_elim_6() {
 3 | a=a   =Elim:2,1
 ";
     // not correct, because substitution has to be applied ONE or more times
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_7() {
@@ -97,7 +114,7 @@ fn test_equals_elim_7() {
 3 | P(a,b,c,a,b,c,a,b,c,a,b,c)  =Elim: 1,2
 ";
     // not correct, because substitution has to be applied ONE or more times
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_8() {
@@ -152,7 +169,7 @@ fn test_equals_elim_12() {
 3 | P(b,b,c,a,b,c,b,a,c,b,b,c)  =Elim: 1,2
 ";
     // not correct: substituting a->b three times, but also substituting b->a once
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_13() {
@@ -163,7 +180,7 @@ fn test_equals_elim_13() {
 3 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
 ";
     // not correct: substitution needs to be applied at least once
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_14() {
@@ -184,7 +201,7 @@ fn test_equals_elim_15() {
 3 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
 ";
     // not correct: substitution needs to be applied at least once
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_16a() {
@@ -204,7 +221,7 @@ fn test_equals_elim_16b() {
   | ---
 3 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
 ";
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_17() {
@@ -215,7 +232,7 @@ fn test_equals_elim_17() {
 3 | P(f(a,f(a,c,b),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
 ";
     // not correct: substitution needs to be applied at least once
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_18() {
@@ -235,7 +252,7 @@ fn test_equals_elim_19() {
   | ---
 3 | P(f(a,f(a,h(a),c),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
 ";
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_20() {
@@ -255,7 +272,7 @@ fn test_equals_elim_21() {
   | ---
 3 | P(f(a,f(a,c,h(a)),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
 ";
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_22() {
@@ -275,7 +292,7 @@ fn test_equals_elim_23() {
   | ---
 3 | P(f(a,f(a,c,h(b)),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
 ";
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_24() {
@@ -285,7 +302,7 @@ fn test_equals_elim_24() {
   | ---
 3 | P(f(a,f(a,c,hello(a)),f(a,c,f(a,a,b))), g(f(c,b,a),g(f(g(a,b),g(b,a),g(a,a)),h(g(a,c))))) =Elim:1,2
 ";
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_25() {
@@ -295,7 +312,7 @@ fn test_equals_elim_25() {
   | ---
 3 | P(f(a,f(a,c,h(a)),f(a,c,f(a,a,b))), g(f(c,b,a),f(a,c,h(a)))) =Elim:1,2
 ";
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_26() {
@@ -315,7 +332,7 @@ fn test_equals_elim_27() {
   | ---
 3 | P(f(a,f(a,c,h(a)),f(a,c,f(a,a,b))), g(f(c,b,a),f(a,c,h(a)))) =Elim:1,2
 ";
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_28() {
@@ -335,7 +352,7 @@ fn test_closed_term_substitution_1() {
 2 | ∃y P(f(a),y)     ∀Elim:1
 3 | ∃z ∃y P(f(a),z)  ∃Intro:2
 ";
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_closed_term_substitution_2() {
@@ -417,7 +434,7 @@ fn test_exists_conclusion_does_not_match() {
 3 | | ∃y P(y)     ∃Intro: 2
 4 | ∃z P(z)       ∃Elim: 1,2-3";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_exists_no_boxed_const() {
@@ -429,7 +446,7 @@ fn test_exists_no_boxed_const() {
 3 | | ∃y P(y)     ∃Intro: 2
 4 | ∃y P(y)       ∃Elim: 1,2-3";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_exists_no_boxed_variable() {
@@ -440,7 +457,7 @@ fn test_exists_no_boxed_variable() {
   | | --
 3 | | ∃y P(y)     ∃Intro: 2
 4 | ∃y P(y)       ∃Elim: 1,2-3";
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_more_exists_stuff() {
@@ -452,7 +469,7 @@ fn test_more_exists_stuff() {
 3 | | ∃y P(y)     ∃Intro: 2
 4 | ∃y P(y)       ∃Elim: 1,2-3";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_exists_stuff_wrong_constant_in_box() {
@@ -464,7 +481,7 @@ fn test_exists_stuff_wrong_constant_in_box() {
 3 | | ∃y P(y)     ∃Intro: 2
 4 | ∃y P(y)       ∃Elim: 1,2-3";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_boxed_constant_subproof() {
@@ -476,7 +493,7 @@ fn test_boxed_constant_subproof() {
 3 | | P(c)        Reit: 2
 4 | P(c)       ∃Elim: 1,2-3";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_boxed_const() {
@@ -502,7 +519,7 @@ fn test_no_boxed_proposition() {
 4 | ⊥       Reit:1
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_no_boxed_var() {
@@ -515,7 +532,7 @@ fn test_no_boxed_var() {
 4 | ⊥       Reit:1
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_no_boxed_funcapp() {
@@ -528,7 +545,7 @@ fn test_no_boxed_funcapp() {
 4 | ⊥       Reit:1
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_no_boxed_funcapp_2() {
@@ -541,7 +558,7 @@ fn test_no_boxed_funcapp_2() {
 4 | ⊥       Reit:1
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_multiple_exists_1() {
@@ -578,7 +595,7 @@ fn test_multiple_exists_2() {
 9 | a=a                =Intro
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_multiple_exists_3() {
@@ -597,7 +614,7 @@ fn test_multiple_exists_3() {
 9 | b=b                =Intro
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_multiple_exists_4() {
@@ -616,7 +633,7 @@ fn test_multiple_exists_4() {
 9 | a=b                ⊥Elim:2
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_multiple_exists_5() {
@@ -635,7 +652,7 @@ fn test_multiple_exists_5() {
 9 |  ∃u∃z P(u,z)          ∃Elim:1,3-7
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_multiple_exists_6() {
@@ -673,7 +690,7 @@ fn test_multiple_exists_7() {
 9 |  ∃u∃z P(u,z)          ∃Elim:1,3-8
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_multiple_exists_8() {
@@ -749,7 +766,7 @@ fn test_multiple_exists_11() {
 9 |  ∃u∃z P(u,z)          ∃Elim:1,3-8
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_multiple_exists_12() {
@@ -768,7 +785,7 @@ fn test_multiple_exists_12() {
 9 |  ∃u∃z P(u,z)          ∃Elim:1,4-8
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_multiple_exists_13() {
@@ -787,7 +804,7 @@ fn test_multiple_exists_13() {
 9 |  ∃u∃z P(u,z)          ∃Elim:1,4-8
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_forall_1() {
@@ -829,7 +846,7 @@ fn test_forall_3() {
 5 | ∀y P(d)    ∀Intro:3-4
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_forall_4() {
@@ -843,7 +860,7 @@ fn test_forall_4() {
 5 | ∀d P(y)    ∀Intro:3-4
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_forall_5() {
@@ -857,7 +874,7 @@ fn test_forall_5() {
 5 | ∀d P(d)    ∀Intro:3-4
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_forall_6() {
@@ -885,7 +902,7 @@ fn test_forall_7() {
 5 | ∀x (d=x)    ∀Intro:3-4
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_forall_8() {
@@ -899,7 +916,7 @@ fn test_forall_8() {
 5 | ∀x (x=x)    ∀Intro:3-4
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_forall_9() {
@@ -913,7 +930,7 @@ fn test_forall_9() {
 5 | ∀x (x=x)    ∀Intro:3-4
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_exists_intro_zero_or_more_1() {
@@ -963,7 +980,7 @@ fn test_exists_intro_zero_or_more_5() {
 2 | ∃u S(c,c,c)   ∃Intro:1
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_exists_intro_zero_or_more_6() {
@@ -983,7 +1000,7 @@ fn test_exists_intro_zero_or_more_7() {
 2 | ∃a S(c,c,c)   ∃Intro:1
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_exists_intro_zero_or_more_8() {
@@ -993,7 +1010,7 @@ fn test_exists_intro_zero_or_more_8() {
 2 | ∃c S(c,c,c)   ∃Intro:1
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_bicond_elim_1() {
@@ -1019,7 +1036,7 @@ fn test_bicond_elim_2() {
 5 | B     ↔ Elim:1,4
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_bicond_elim_3() {
@@ -1032,7 +1049,7 @@ fn test_bicond_elim_3() {
 5 | B     ↔ Elim:1,4
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_bicond_elim_4() {
@@ -1045,7 +1062,7 @@ fn test_bicond_elim_4() {
 5 | B     ↔ Elim:1,4
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_bicond_intro_1() {
@@ -1081,7 +1098,7 @@ fn test_bicond_intro_2() {
 7 | A↔B     ↔Intro:5-6,3-4
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_bicond_intro_3() {
@@ -1099,7 +1116,7 @@ fn test_bicond_intro_3() {
 7 | B↔A     ↔Intro:3-4,5-6
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_bicond_intro_4() {
@@ -1135,7 +1152,7 @@ fn test_bicond_intro_5() {
 7 | B↔A     ↔Intro:5-6,3-4
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_implies_intro_1() {
@@ -1161,7 +1178,7 @@ fn test_implies_intro_2() {
 4 | A→B      →Intro:2-3
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_implies_intro_3() {
@@ -1174,7 +1191,7 @@ fn test_implies_intro_3() {
 4 | A→B      →Intro:2-3
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_implies_intro_4() {
@@ -1187,7 +1204,7 @@ fn test_implies_intro_4() {
 4 | A→B      →Intro:2-3
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 
 #[test]
@@ -1355,7 +1372,7 @@ fn test_bonus_ai_2018_2_boxed_constant() {
 50 | ∃x(∀y¬R(x,y) ∨ ∀y R(y,x))                ∨ Elim: 36, 42-49, 37-41
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_bonus_ai_2018_3() {
@@ -1435,7 +1452,7 @@ fn test_bonus_ai_2018_3() {
 50 | ∃x(∀y¬R(x,y) ∨ ∀y R(y,x))                ∨ Elim: 36, 37-41, 42-49
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_funny_bicond_and_no_premises() {
@@ -1461,7 +1478,7 @@ fn test_no_fitch_bar_1() {
 5 | ∀x P(x)    ∀Intro:3-4
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_no_fitch_bar_2() {
@@ -1474,7 +1491,7 @@ fn test_no_fitch_bar_2() {
 5 | ∀x P(x)    ∀Intro:3-4
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_no_fitch_bar_3() {
@@ -1484,7 +1501,7 @@ fn test_no_fitch_bar_3() {
 3 | ∀x P(x)    Reit:1
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_simple() {
@@ -1505,7 +1522,7 @@ fn test_arities_1() {
 3 | a=b    ⊥Elim: 2
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_arities_2() {
@@ -1516,7 +1533,7 @@ fn test_arities_2() {
 3 | a=b    ⊥Elim: 2
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_arities_3() {
@@ -1527,7 +1544,7 @@ fn test_arities_3() {
 3 | a=a(a)    ⊥Elim: 2
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_arities_4() {
@@ -1538,7 +1555,7 @@ fn test_arities_4() {
 3 | f(a,b,c)=f(c,b,a)    ⊥Elim: 2
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_arities_5() {
@@ -1549,7 +1566,7 @@ fn test_arities_5() {
 3 | P    ⊥Elim: 2
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_arities_6() {
@@ -1560,7 +1577,7 @@ fn test_arities_6() {
 3 | P(a)    ⊥Elim: 2
 ";
 
-    assert!(!proof_is_correct_ultra_pedantic(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_arities_7() {
@@ -1583,7 +1600,7 @@ fn test_arities_8() {
 ";
 
     // not correct, because f is both const and funcsymb
-    assert!(!fitch_proof::proof_is_correct(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_arities_9() {
@@ -1606,7 +1623,7 @@ fn test_no_function_symbol_has_variable_name_1() {
 3 | x(a)=a    ⊥Elim: 2
 ";
 
-    assert!(!fitch_proof::proof_is_correct(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_no_function_symbol_has_variable_name_2() {
@@ -1617,7 +1634,7 @@ fn test_no_function_symbol_has_variable_name_2() {
 3 | x(a)=y(a)    ⊥Elim: 2
 ";
 
-    assert!(!fitch_proof::proof_is_correct(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_no_function_symbol_has_variable_name_3() {
@@ -1628,7 +1645,7 @@ fn test_no_function_symbol_has_variable_name_3() {
 3 | x(a)=x(a)    ⊥Elim: 2
 ";
 
-    assert!(!fitch_proof::proof_is_correct(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_no_function_symbol_has_variable_name_4() {
@@ -1640,7 +1657,7 @@ fn test_no_function_symbol_has_variable_name_4() {
 ";
     // check that the thing does not panic, because here there are two things wrong: not only a
     // function symbol with a variable name, but also an arity mismatch.
-    assert!(!fitch_proof::proof_is_correct(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_no_function_symbol_has_variable_name_5() {
@@ -1652,7 +1669,7 @@ fn test_no_function_symbol_has_variable_name_5() {
 ";
     // check that the thing does not panic, because here there are two things wrong: not only a
     // function symbol with a variable name, but also an arity mismatch.
-    assert!(!fitch_proof::proof_is_correct(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_no_function_symbol_has_variable_name_6() {
@@ -1664,7 +1681,7 @@ fn test_no_function_symbol_has_variable_name_6() {
 ";
     // check that the thing does not panic, because here there are two things wrong: not only a
     // function symbol with a variable name, but also an arity mismatch.
-    assert!(!fitch_proof::proof_is_correct(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_diff_number_of_conjs_1() {
@@ -1674,7 +1691,7 @@ fn test_equals_elim_diff_number_of_conjs_1() {
   | ---
 3 | a=c ∧ c=d           =Elim:1,2
 ";
-    assert!(!fitch_proof::proof_is_correct(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_diff_number_of_conjs_2() {
@@ -1684,7 +1701,7 @@ fn test_equals_elim_diff_number_of_conjs_2() {
   | ---
 3 | a=c ∧ c=d ∧ e=f           =Elim:1,2
 ";
-    assert!(!fitch_proof::proof_is_correct(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_diff_number_of_disjs_1() {
@@ -1694,7 +1711,7 @@ fn test_equals_elim_diff_number_of_disjs_1() {
   | ---
 3 | a=c ∨ c=d           =Elim:1,2
 ";
-    assert!(!fitch_proof::proof_is_correct(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
 fn test_equals_elim_diff_number_of_disjs_2() {
@@ -1704,5 +1721,5 @@ fn test_equals_elim_diff_number_of_disjs_2() {
   | ---
 3 | a=c ∨ c=d ∨ e=f         =Elim:1,2
 ";
-    assert!(!fitch_proof::proof_is_correct(proof));
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
