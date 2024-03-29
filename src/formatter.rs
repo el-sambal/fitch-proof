@@ -55,6 +55,10 @@ pub fn format_proof(proof_lines: Vec<ProofLine>) -> String {
         }
     }
 
+    for line_string in &mut line_strings {
+        remove_whitespace_at_end( line_string);
+    }
+
     line_strings.join("\n")
 }
 
@@ -149,4 +153,9 @@ fn format_justification(just: &Justification) -> String {
         Justification::ExistsIntro(n) => format!("∃ Intro: {n}"),
         Justification::ExistsElim(n, (a, b)) => format!("∃ Elim: {n}, {a}-{b}"),
     }
+}
+
+fn remove_whitespace_at_end(s: &mut String) {
+    let rpo = s.chars().collect::<Vec<_>>().iter().rposition(|c| c != &' ').unwrap();
+    *s=s.chars().take(rpo+1).collect::<String>();
 }
