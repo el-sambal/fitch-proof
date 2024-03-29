@@ -23,7 +23,12 @@ pub fn parse_fitch_proof(proof: &str) -> Result<Vec<ProofLine>, String> {
 }
 
 pub fn parse_allowed_variable_names(allowed_var_names: &str) -> Result<HashSet<String>, String> {
-    let toks = lex(allowed_var_names)?;
+    let toks = match lex(allowed_var_names) {
+        Ok(toks) => toks,
+        Err(err) => {
+            return Err(format!("failure when lexing list of allowed variable names: {err}"))
+        }
+    };
     let err_str = "the list of allowed variable names could not be parsed".to_string();
     if toks.iter().any(|tok| !matches!(tok, Token::Name(_) | Token::Comma)) {
         return Err(err_str);
@@ -1110,25 +1115,13 @@ mod tests {
             parse_justification(&lex("∨Elim:42,43-44,45-46,47-48").unwrap()),
             Ok(Justification::OrElim(42, vec![(43, 44), (45, 46), (47, 48)]))
         );
-        assert!(
-            parse_justification(&lex("∨Elim:42,43-44,45-46,47,48").unwrap()).is_err()
-        );
-        assert!(
-            parse_justification(&lex("∨Elim:42,43-44,45-46-47-48").unwrap()).is_err()
-        );
-        assert!(
-            parse_justification(&lex("∨Elim:42-43-44,45-46,47-48").unwrap()).is_err()
-        );
-        assert!(
-            parse_justification(&lex("∨Elim-42,43-44,45-46,47-48").unwrap()).is_err()
-        );
-        assert!(
-            parse_justification(&lex("∨Elim:42,43-44,45-46,47-48,").unwrap()).is_err()
-        );
-        assert!(parse_justification(&lex("∨Elim:42,43-44,45-46,47-48,49").unwrap())
-            .is_err());
-        assert!(parse_justification(&lex("∨Elim:42,43-44,45-46,47-48,49-").unwrap())
-            .is_err());
+        assert!(parse_justification(&lex("∨Elim:42,43-44,45-46,47,48").unwrap()).is_err());
+        assert!(parse_justification(&lex("∨Elim:42,43-44,45-46-47-48").unwrap()).is_err());
+        assert!(parse_justification(&lex("∨Elim:42-43-44,45-46,47-48").unwrap()).is_err());
+        assert!(parse_justification(&lex("∨Elim-42,43-44,45-46,47-48").unwrap()).is_err());
+        assert!(parse_justification(&lex("∨Elim:42,43-44,45-46,47-48,").unwrap()).is_err());
+        assert!(parse_justification(&lex("∨Elim:42,43-44,45-46,47-48,49").unwrap()).is_err());
+        assert!(parse_justification(&lex("∨Elim:42,43-44,45-46,47-48,49-").unwrap()).is_err());
         assert!(parse_justification(&lex("∨Elim:42").unwrap()).is_err());
     }
     #[test]
