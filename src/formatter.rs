@@ -47,6 +47,14 @@ pub fn format_proof(proof_lines: Vec<ProofLine>) -> String {
         }
     }
 
+    pad_to_same_length(&mut line_strings, 9);
+
+    for (line, line_string) in zip(&proof_lines, &mut line_strings) {
+        if line.justification.is_some() {
+            line_string.push_str(&format_justification(line.justification.as_ref().unwrap()));
+        }
+    }
+
     line_strings.join("\n")
 }
 
@@ -111,5 +119,34 @@ fn format_wff(wff: &Wff) -> String {
             it.as_str().to_string()
         }
         _ => wff_string,
+    }
+}
+
+fn format_justification(just: &Justification) -> String {
+    match just {
+        Justification::Reit(n) => format!("Reit: {n}"),
+        Justification::AndIntro(ns) => {
+            format!("∧ Intro: {}", ns.iter().map(|n| n.to_string()).collect::<Vec<_>>().join(", "))
+        }
+        Justification::AndElim(n) => format!("∧ Elim: {n}"),
+        Justification::OrIntro(n) => format!("∨ Intro: {n}"),
+        Justification::OrElim(n, subs) => format!(
+            "∨ Elim: {n}, {}",
+            subs.iter().map(|(a, b)| format!("{a}-{b}")).collect::<Vec<_>>().join(", ")
+        ),
+        Justification::ImpliesIntro((a, b)) => format!("→ Intro: {a}-{b}"),
+        Justification::ImpliesElim(n, m) => format!("→ Elim: {n},{m}"),
+        Justification::BicondIntro((a, b), (c, d)) => format!("↔ Intro: {a}-{b}, {c}-{d}"),
+        Justification::BicondElim(n, m) => format!("↔ Elim: {n}, {m}"),
+        Justification::EqualsIntro => "= Intro".to_owned(),
+        Justification::EqualsElim(n, m) => format!("= Elim: {n}, {m}"),
+        Justification::NotElim(n) => format!("¬ Elim: {n}"),
+        Justification::NotIntro((a, b)) => format!("¬ Intro: {a}-{b}"),
+        Justification::BottomElim(n) => format!("⊥ Elim: {n}"),
+        Justification::BottomIntro(n, m) => format!("⊥ Intro: {n}, {m}"),
+        Justification::ForallIntro((a, b)) => format!("∀ Intro: {a}-{b}"),
+        Justification::ForallElim(n) => format!("∀ Elim: {n}"),
+        Justification::ExistsIntro(n) => format!("∃ Intro: {n}"),
+        Justification::ExistsElim(n, (a, b)) => format!("∃ Elim: {n}, {a}-{b}"),
     }
 }
