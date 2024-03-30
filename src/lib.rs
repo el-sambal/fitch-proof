@@ -1,5 +1,3 @@
-use parser::parse_allowed_variable_names;
-use parser::parse_fitch_proof;
 use wasm_bindgen::prelude::*;
 mod checker;
 mod data;
@@ -42,7 +40,7 @@ pub fn check_proof(proof: &str, allowed_variable_names: &str) -> String {
 ///
 /// This function never panics.
 fn check_proof_to_proofresult(proof: &str, allowed_variable_names: &str) -> ProofResult {
-    match (parse_fitch_proof(proof), parse_allowed_variable_names(allowed_variable_names)) {
+    match (parser::parse_fitch_proof(proof), parser::parse_allowed_variable_names(allowed_variable_names)) {
         (Ok(proof_lines), Ok(variable_names)) => checker::check_proof(proof_lines, variable_names),
         (Err(err), _) | (_, Err(err)) => ProofResult::FatalError(err),
     }
@@ -63,7 +61,7 @@ pub fn proof_is_correct(proof: &str) -> bool {
 /// This function never panics.
 #[wasm_bindgen]
 pub fn format_proof(proof: &str) -> String {
-    match parse_fitch_proof(proof) {
+    match parser::parse_fitch_proof(proof) {
         Ok(lines) if !lines.is_empty() => formatter::format_proof(lines),
         _ => proof.to_owned(),
     }
@@ -77,7 +75,7 @@ pub fn format_proof(proof: &str) -> String {
 /// This function never panics.
 #[wasm_bindgen]
 pub fn fix_line_numbers_in_proof(proof: &str) -> String {
-    match parse_fitch_proof(proof) {
+    match parser::parse_fitch_proof(proof) {
         Ok(mut lines) if !lines.is_empty() => {
             fix_line_numbers::fix_line_numbers(&mut lines);
             formatter::format_proof(lines)
