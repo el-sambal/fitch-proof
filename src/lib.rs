@@ -2,6 +2,7 @@ use wasm_bindgen::prelude::*;
 mod checker;
 mod data;
 mod fix_line_numbers;
+mod export_to_latex;
 mod formatter;
 mod parser;
 mod proof;
