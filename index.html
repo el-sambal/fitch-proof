@@ -51,10 +51,9 @@
       function upside_down() {
          is_upside_down = !is_upside_down;
          if (is_upside_down) {
-            document.body.style.setProperty("-webkit-transform", "rotate(180deg)", null);
-
+            document.getElementById("proof-field").style.setProperty("-webkit-transform", "rotate(180deg)", null);
          } else {
-            document.body.style.setProperty("-webkit-transform", "rotate(0deg)", null);
+            document.getElementById("proof-field").style.setProperty("-webkit-transform", "rotate(0deg)", null);
          }
       }
 
@@ -162,7 +161,7 @@
       LINE NUMBERS</button>
    <button id="settings-button" style="padding: 9px 9px" title="Toggle visibility of the settings">SHOW/HIDE
       SETTINGS</button>
-   <button id="upside-down-button" style="padding: 9px 9px" title="Rotate web page by 180 degrees">ROTATE PROOF</button>
+   <button id="upside-down-button" style="padding: 9px 9px" title="Rotate proof...">ROTATE PROOF</button>
 
    <br>
    <br>
