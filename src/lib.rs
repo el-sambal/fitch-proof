@@ -5,6 +5,7 @@ mod checker;
 mod data;
 mod formatter;
 mod parser;
+mod proof;
 use crate::data::ProofResult;
 
 macro_rules! default_variable_names {
