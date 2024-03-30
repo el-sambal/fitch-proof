@@ -21,28 +21,29 @@ pub fn format_proof(proof_lines: Vec<ProofLine>) -> String {
     pad_to_same_length(&mut line_strings, 1);
 
     for (line, line_string) in zip(&proof_lines, &mut line_strings) {
-        line_string.push_str(&"| ".repeat(line.depth));
+        line_string.push_str(format!("|{}", " |".repeat(line.depth - 1)).as_str());
     }
 
     for (line, line_string) in zip(&proof_lines, &mut line_strings) {
         if line.is_fitch_bar_line {
-            line_string.push_str(" ---");
+            line_string.push_str("----");
         }
     }
 
     for (line, line_string) in zip(&proof_lines, &mut line_strings) {
         if line.constant_between_square_brackets.is_some() {
-            line_string.push('[');
+            line_string.push_str(" [");
             line_string.push_str(match line.constant_between_square_brackets.as_ref().unwrap() {
                 Term::Atomic(str) => str,
                 _ => panic!(),
             });
-            line_string.push_str("] ");
+            line_string.push(']');
         }
     }
 
     for (line, line_string) in zip(&proof_lines, &mut line_strings) {
         if line.sentence.is_some() {
+            line_string.push(' ');
             line_string.push_str(&format_wff(line.sentence.as_ref().unwrap()));
         }
     }
@@ -56,7 +57,7 @@ pub fn format_proof(proof_lines: Vec<ProofLine>) -> String {
     }
 
     for line_string in &mut line_strings {
-        remove_whitespace_at_end( line_string);
+        remove_whitespace_at_end(line_string);
     }
 
     line_strings.join("\n")
@@ -161,5 +162,5 @@ fn format_justification(just: &Justification) -> String {
 /// This function removes any spaces at the end of a [String].
 fn remove_whitespace_at_end(s: &mut String) {
     let rpo = s.chars().collect::<Vec<_>>().iter().rposition(|c| c != &' ').unwrap();
-    *s=s.chars().take(rpo+1).collect::<String>();
+    *s = s.chars().take(rpo + 1).collect::<String>();
 }
