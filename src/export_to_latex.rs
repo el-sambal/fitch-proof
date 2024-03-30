@@ -1,49 +1,47 @@
 use crate::data::*;
 use crate::formatter::format_wff;
+use std::fmt::Write;
 
-#[allow(clippy::all)]
 pub fn proof_to_latex(proof: &[ProofLine]) -> String {
     let mut prev_depth = 1;
-    let proof_str = proof
-        .iter()
-        .map(|l| {
-            if l.line_num.is_none() {
-                return "".to_string();
-            }
-            let part1 = if l.depth == prev_depth + 1 {
-                prev_depth += 1;
-                "\\open\n"
-            } else if l.depth == prev_depth - 1 {
-                prev_depth -= 1;
-                "\\close\n"
+    let proof_str = proof.iter().fold(String::new(), |mut output, l| {
+        if l.line_num.is_none() {
+            return output;
+        }
+        let part1 = if l.depth == prev_depth + 1 {
+            prev_depth += 1;
+            "\\open\n"
+        } else if l.depth == prev_depth - 1 {
+            prev_depth -= 1;
+            "\\close\n"
+        } else {
+            ""
+        };
+        let part2 = format!(
+            "{}{{{}}}{{{}{}}}", // this is your fate if you write a latex exporter
+            if l.justification.is_none() {
+                "\\hypo"
             } else {
-                ""
-            };
-            let part2 = format!(
-                "{}{{{}}}{{{}{}}}",
-                if l.justification.is_none() {
-                    "\\hypo"
-                } else {
-                    "\\have"
-                },
-                l.line_num.unwrap(),
-                match &l.constant_between_square_brackets {
-                    Some(Term::Atomic(t)) => format!(" \\boxed{{{}}}~ ", t.to_string()),
-                    _ => "".to_string(),
-                },
-                match &l.sentence {
-                    Some(wff) => sentence_to_latex(wff),
-                    _ => "".to_string(),
-                },
-            );
-            let part3 = match &l.justification {
-                Some(just) => justification_to_latex(just),
+                "\\have"
+            },
+            l.line_num.unwrap(),
+            match &l.constant_between_square_brackets {
+                Some(Term::Atomic(t)) => format!(" \\boxed{{{}}}~ ", t),
                 _ => "".to_string(),
-            };
-            format!("{}{}{}\n", part1, part2, part3)
-        })
-        .collect::<String>();
-    format!("{}{}{}", "$\n\\begin{nd}", proof_str, "\\end{nd}\n$")
+            },
+            match &l.sentence {
+                Some(wff) => sentence_to_latex(wff),
+                _ => "".to_string(),
+            },
+        );
+        let part3 = match &l.justification {
+            Some(just) => justification_to_latex(just),
+            _ => "".to_string(),
+        };
+        let _ = writeln!(output, "{}{}{}", part1, part2, part3);
+        output
+    });
+    format!("{}{}{}", "$\n\\begin{nd}\n", proof_str, "\\end{nd}\n$")
         .replace("  ", " ")
         .replace("{ ", "{")
         .replace(" }", "}")
