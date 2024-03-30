@@ -1,16 +1,54 @@
 use crate::data::*;
 use std::collections::HashSet;
 
+/// [Scope] is a type which stores scoping information (like which lines can reference which
+/// lines).
+///
+/// It is a `Vec<(Vec<usize>,Vec<(usize,usize)>)>`),
+/// such that:
+/// ```notrust
+/// for all i in <line numbers corresponding to inferences (not premises) found in proof>:
+///   scope[i].0 == <the set of the line numbers which are referenceable by line i>
+///     and
+///   scope[i].1 == <the set of the subproofs i-j (stored as tuple (i,j))
+///                   which are referenceable by line i>
+///   ```
+///
+/// The first index `scope[0]` is unused.
 pub type Scope = Vec<(Vec<usize>, Vec<(usize, usize)>)>;
 
-// should be always constructed using the construct() method!!!!!
+/// A [Proof] is a fundamental entity in this program. It contains important information that can
+/// be used to assess whether the proof is correct.
+///
+/// Note that a [Proof] should always be
+/// constructed using the [Proof::construct] function!!
+///
+/// Note that a [Proof] does not necessarily mean "a fully correct proof". If you want to assess
+/// the full correctness of a [Proof], use [Proof::is_fully_correct].
 pub struct Proof {
+    ///  a vector containing all the [ProofLine]s this proof consists of,
     pub lines: Vec<ProofLine>,
+    ///  a field that contains the [Scope] of the proof (it contains information which lines may
+    /// reference which lines)
     pub scope: Scope,
+    ///  a field containing the [ProofUnit]s: this is useful for assessing the validity of the
+    /// structure of the proof.
     pub units: Vec<ProofUnit>,
+    ///  a field which contains the set of strings that should be seen as a variable.
     pub allowed_variable_names: HashSet<String>,
 }
 
+/// An enum that is useful to look at the structure of a proof. This is useful for example when you
+/// want to figure out which lines can reference which other lines. A proof can be represented
+/// using a vector of [ProofUnit]s. One of the important differences between a vector [ProofLine]s
+/// and a vector of [ProofUnit]s is that in a vector of [ProofLine]s, for each proof line the depth
+/// is stored, and if you want to see where subproofs begin and end, you should look at the `depth`
+/// of the [ProofLine]s. However, the opening and closing of a subproof are made much more explicit
+/// when you have a vector of [ProofUnit]s. If you have some inference at depth 2, and then a
+/// premise at depth 3 (i.e., a new subproof is opened), then between the corresponding
+/// [ProofUnit]s for the two sentences, there will be a [ProofUnit::SubproofOpen].
+///
+/// Empty lines are not representable in terms of [ProofUnit]s (and this is also not necessary).
 #[derive(Debug, PartialEq)]
 pub enum ProofUnit {
     NumberedProofLineInference(usize), // usize is line number
@@ -22,11 +60,11 @@ pub enum ProofUnit {
 }
 
 impl Proof {
-    // Given a vector of ProofLines, this method constructs the proof. In case this method fails,
-    // it means a fatal error will need to be given, because if this method already fails then the
-    // proof is not even half-well-structured, and further analysis is impossible. After
-    // construct()ing the proof, you should proof.is_fully_correct() it. The combination of these two things
-    // allows you to assess the correctness of a proof.
+    /// Given a vector of [ProofLine]s, this method constructs the proof. In case this method fails,
+    /// it means a fatal error will need to be given, because if this method already fails then the
+    /// proof is not even half-well-structured, and further analysis is impossible. After
+    /// [Proof::construct]ing the proof, you should [Proof::is_fully_correct]() it. The combination of these two things
+    /// allows you to assess the correctness of a proof.
     pub fn construct(
         proof_lines: Vec<ProofLine>,
         allowed_variable_names: HashSet<String>,
@@ -43,7 +81,7 @@ impl Proof {
         })
     }
 
-    // converts proof lines to a vector of so-called ProofUnits which are useful during analysis.
+    /// From a vector of [ProofLine]s, this function generates a vector of [ProofUnit]s which are useful during analysis.
     fn lines_to_units(proof_lines: &[ProofLine]) -> Result<Vec<ProofUnit>, String> {
         let mut units: Vec<ProofUnit> = vec![];
         let mut prev_depth = 1;
@@ -76,14 +114,7 @@ impl Proof {
         Ok(units)
     }
 
-    // For half-well-structured proofs, we can compute `scope`, which is a Vec<(Vec<usize>,Vec<(usize,usize)>)>,
-    // such that:
-    // for all i in <line numbers corresponding to inferences (not premises) found in proof>:
-    //   scope[i].0 == <the set of the line numbers which are referenceable by line i>
-    //     and
-    //   scope[i].1 == <the set of the subproofs i-j (stored as tuple (i,j)) which are referenceable by line i>
-    //
-    // the first index scope[0] is unused.
+    /// This function computes the [Scope] of a proof.
     fn determine_scope(units: &[ProofUnit]) -> Scope {
         let last_line_number: usize = units
             .iter()
@@ -164,25 +195,26 @@ impl Proof {
         scope
     }
 
-    // checks if a proof is HALF-well-structured.
-    // The reason that we make this distinction is because the algorithm does this:
-    // -> (1) parse proof
-    // -> (2) check that proof is HALF-well-structured
-    // -> (3) check all lines of the proof
-    // -> (4) check that proof is fully correct
-    // The point is that we want to give the user as helpful error messages as possible. We also
-    // want to be able to give the user several meaningful messages at the same time. But if a
-    // proof is not even half-well-structured, then it is not even possible to check all lines of
-    // it, so a FATAL error will be given, in which case all the other analysis does not happen.
-    // If the user has a HALF-structured (but not fully correct) proof, then it is still possible to
-    // perform the more detailed analysis in step 3, so we want that. In this case, the user will
-    // get meaningful error messages from all proof lines that are wrong, and that is better than
-    // only a fatal error when they for example just forget one justification somewhere.
-    // A notable allowed thing in half-well-structured proofs is having premises after the Fitch
-    // bar. Of course, this is not allowed in a fully correct proof, but here it means that we
-    // basically allow the user to not write a justification for the time being. In that case it
-    // will be parsed as a premise, so that's why we allow premises. This function won't complain
-    // about it, but of course, this will be checked when the proof is assessed for full correctness.
+    /// This function checks if a proof is HALF-well-structured.
+    /// The reason that we make this distinction is because the validator algorithm does this:
+    /// - (1) parse proof
+    /// - (2) check that proof is HALF-well-structured
+    /// - (3) check all lines of the proof
+    /// - (4) check that proof is fully correct
+    ///
+    /// The point is that we want to give the user as helpful error messages as possible. We also
+    /// want to be able to give the user several meaningful messages at the same time. But if a
+    /// proof is not even half-well-structured, then it is not even possible to check all lines of
+    /// it, so a FATAL error will be given, in which case all the other analysis does not happen.
+    /// If the user has a HALF-structured (but not fully correct) proof, then it is still possible to
+    /// perform the more detailed analysis in step 3, so we want that. In this case, the user will
+    /// get meaningful error messages from all proof lines that are wrong, and that is better than
+    /// only a fatal error when they for example just forget one justification somewhere.
+    /// A notable allowed thing in half-well-structured proofs is having premises after the Fitch
+    /// bar. Of course, this is not allowed in a fully correct proof, but here it means that we
+    /// basically allow the user to not write a justification for the time being. In that case it
+    /// will be parsed as a premise, so that's why we allow premises. This function won't complain
+    /// about it, but of course, this will be checked when the proof is assessed for full correctness.
     fn is_half_well_structured(units: &[ProofUnit]) -> Result<(), String> {
         // traverse the `ProofUnit`s to check validity of the proof
         // basically, for each "proof unit", we check that the units after that are allowed.

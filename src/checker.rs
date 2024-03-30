@@ -3,7 +3,14 @@ use crate::proof::*;
 use std::collections::{HashMap, HashSet};
 use std::iter::zip;
 
-// Name says it all :)
+/// This function checks whether a proof is fully correct. It takes in a vector of [ProofLine]s,
+/// which can come straight from the parser (i.e. there are no preconditions about well-formedness
+/// of this vector).
+///
+/// The second argument is the set of strings that should be seen as a variable.
+/// For example, if this is the set ["x", "y", "z"], then something like ∀x P(x) will be accepted,
+/// but something like ∀a P(a) will not be accepted, because "a" is not listed as a string
+/// that should be seen as a variable.
 pub fn check_proof(
     proof_lines: Vec<ProofLine>,
     allowed_variable_names: HashSet<String>,
@@ -17,12 +24,9 @@ pub fn check_proof(
 /* ------------------ PRIVATE -------------------- */
 
 impl Proof {
-    // given a Proof (which 'by definition' is already HALF-well-structured,
-    // otherwise its construct()or would have failed), checks if it is fully correct
-    // (that is, each inference has a valid justification
-    // and the last sentence is not inside a subproof).
-    // Together with Proof::construct(), this is the method that you should run in
-    // order to assess the validity of a proof.
+    /// Given a [Proof], this function checks if it is fully correct.
+    ///
+    /// When you want to fully assess the validity of a proof, you should first [Proof::construct] the proof, and then run this function.
     fn is_fully_correct(&self) -> ProofResult {
         let mut errors: Vec<String> = vec![]; // here we accumulate all errors
 
@@ -97,9 +101,9 @@ impl Proof {
         }
     }
 
-    // returns a vector containing all line numbers which correspond to "premises"
-    // that are found between a Fitch bar line and a SubproofOpen.
-    // (these would be the inferences with missing justification, but they are parsed as premises)
+    /// This function returns a vector containing all line numbers which correspond to "premises"
+    /// that are found between a Fitch bar line and a SubproofOpen.
+    /// (these would be the inferences with missing justification, but they are parsed as premises)
     fn line_numbers_missing_justification(&self) -> Vec<usize> {
         let mut res = vec![]; // store what we're going to return
         let mut expect_justification = false;
@@ -125,27 +129,30 @@ impl Proof {
         res
     }
 
-    // returns true iff the last line (that has a line number) is inside subproof
+    /// This function returns true if and only if the last line (that has a line number) is inside a subproof
     fn last_line_is_inside_subproof(&self) -> bool {
         // unwrap should work, since this proof is half-well-structured, so it should contain some
         // line that contains a logical sentence or boxed constant (i.e. it has a line number).
         self.lines.iter().rev().find(|&pl| pl.sentence.is_some()).unwrap().depth > 1
     }
 
-    // returns the line number of the last sentence of the proof.
+    /// This function returns the line number of the last sentence of the proof.
     fn last_line_num(&self) -> usize {
         // unwrap should work, since this proof is half-well-structured, so it should contain some
         // line that contains a logical sentence or boxed constant (i.e. it has a line number).
         self.lines.iter().rev().find(|&pl| pl.line_num.is_some()).unwrap().line_num.unwrap()
     }
 
-    // This function gives you the ProofLine at line number line_num. It does not care about who
-    // referenced this line, and scope issues and such, it just gives it to you. This function
-    // panics if the line number does not exist within the proof.
+    /// This function gives you the [ProofLine] at line number `line_num`. It does not care about who
+    /// referenced this line, and scope issues and such, it just gives it to you. This function
+    /// panics if the line number does not exist within the proof.
     fn get_proofline_at_line_unsafe(&self, line_num: usize) -> &ProofLine {
         self.lines.iter().find(|x| x.line_num.is_some() && x.line_num.unwrap() == line_num).unwrap()
     }
 
+    /// This function checks that no boxed constants are used outside the subproof. If no boxed
+    /// constants are used outside the corresponding subproof, `Ok(())` is returned. Otherwise, a
+    /// vector or relevant error messages will be returned, wrapped in an `Err`.
     fn check_boxed_constant_outside_subproof(&self) -> Result<(), Vec<String>> {
         let mut errors: Vec<String> = vec![];
 
@@ -233,7 +240,7 @@ impl Proof {
             }
         }
 
-        // if wff contains a *constant* which is in the global set of boxed constants (all_boxeds), but not in
+        // If the inputted Wff contains a *constant* which is in the global set of boxed constants (all_boxeds), but not in
         // the current scope, then return Err. Otherwise Ok.
         fn check_wff_not_contain_out_of_scope_boxed_consts(
             wff: &Wff,
@@ -309,9 +316,10 @@ impl Proof {
         }
     }
 
-    // check that all variables are bound, that user doesn't have nested quantifiers over the
-    // same variable and that users don't quantify over a constant, and that the user does not make
-    // a function with the name of a variable
+    /// This function checks that all variables are bound, that user doesn't have nested quantifiers over the
+    /// same variable and that users don't quantify over a constant, and that the user does not make
+    /// a function with the name of a variable. In case none of these conditions are violated,
+    /// `Ok(())` is returned. Otherwise, a relevant error message will be returned.
     fn check_variable_scoping_naming_issues(
         &self,
         wff: &Wff,
@@ -436,10 +444,10 @@ impl Proof {
         check_variable_scoping_naming_issues_helper(self, wff, line_num, &mut vec![])
     }
 
-    // this function first calls get_arity_set(), and then it returns either Ok(()) or a bunch of
-    // error messages, if for example from the arity set it can be determined that the user has
-    // functions of inconsistent arity throughout the proof (e.g. they use both f(x) and f(x,x)) or
-    // if for example the user uses some letter both as a constant name and a function name.
+    /// This function first calls [Proof::get_arity_set], and then it returns either `Ok(())` or a bunch of
+    /// error messages, if for example from the arity set it can be determined that the user has
+    /// functions of inconsistent arity throughout the proof (e.g. they use both f(x) and f(x,x)) or
+    /// if for example the user uses some letter both as a constant name and a function name.
     fn generate_arity_errors(&self) -> Vec<String> {
         let mut errors: Vec<String> = vec![];
         let mut arity_map: HashMap<String, Vec<usize>> = HashMap::from([]);
@@ -474,13 +482,13 @@ impl Proof {
         errors
     }
 
-    // this function returns the "arity set" for a proof. This is a HashSet containing instances of
-    // (name,arity), where name can be the name of any constant, funtion symbol, atomic proposition
-    // or predicate, and arity is its arity. Note that the arity of constants and atomic
-    // propositions is defined to be 0. Note that variables are not included in the arity set.
-    //
-    // Note that if you find for example both f(x,x) and f(x,x,x) in the same proof, then BOTH the
-    // entries ("f", 2) and ("f", 3) will be included in the arity set.
+    /// This function returns the "arity set" for a proof. This is a HashSet containing instances of
+    /// (name,arity), where name can be the name of any constant, funtion symbol, atomic proposition
+    /// or predicate, and arity is its arity. Note that the arity of constants and atomic
+    /// propositions is defined to be 0. Note that variables are not included in the arity set.
+    ///
+    /// Note that if you find for example both f(x,x) and f(x,x,x) in the same proof, then BOTH the
+    /// entries ("f", 2) and ("f", 3) will be included in the arity set.
     fn get_arity_set(&self) -> HashSet<(String, usize)> {
         fn get_arity_set_term(proof: &Proof, term: &Term) -> HashSet<(String, usize)> {
             match term {
@@ -542,15 +550,20 @@ impl Proof {
             .collect()
     }
 
-    // checks whether line n1 can reference line n2.
+    /// This function returns whether line n1 can reference line n2.
+    ///
+    /// For example, it will return `false` if line `n2` comes after line `n1` or if line `n2` is
+    /// inside an already closed subproof. It also returns false if `n1 == n2`, since a proof line
+    /// cannot reference itself.
     fn can_reference(&self, n1: usize, n2: usize) -> bool {
         self.scope[n1].0.contains(&n2)
     }
 
-    // gets the wff at some requested line number, and if this line does not exist or
-    // does not contain a sentence then this function will return an Err(). The function will also give
-    // an Err() if the line is not allowed to be referenced from the referencing line (e.g. because
-    // it is inside an already closed subproof).
+    /// Gets the [Wff] at some requested line number, and if this line does not exist or
+    /// does not contain a sentence then this function will return an `Err` containing
+    /// a relevant error message. The function will also give
+    /// an `Err` if the line is not allowed to be referenced from the referencing line (e.g. because
+    /// it is inside an already closed subproof).
     fn get_wff_at_line(
         &self,
         referencing_line: usize,
@@ -574,9 +587,17 @@ impl Proof {
         }
     }
 
-    // precondition: referencing_line is an existing line (and the scope needs to be computed
-    // already, but that is always the case since we are working on an already-instantiated Proof
-    // instance, and those cannot be created if their scope cannot be determined)
+    /// This function gets the subproof that runs from line `subproof_begin` to line
+    /// `subproof_end`. It will return either `Ok(())` if the subproof exists and is allowed to be
+    /// referenced from `referencing_line`. Otherwise, a relevant error message will be returned.
+    ///
+    /// Example: if the requested subproof is inside an already closed subproof, then line
+    /// `referencing_line` is not allowed to reference this subproof and an error message will be
+    /// returned.
+    ///
+    /// Precondition: referencing_line is an existing line (and the scope needs to be computed
+    /// already, but that is always the case since we are working on an already-instantiated Proof
+    /// instance, and those cannot be created if their scope cannot be determined)
     fn get_subproof_at_lines(
         &self,
         referencing_line: usize,
@@ -597,9 +618,14 @@ impl Proof {
         }
     }
 
-    // checks the logical validity of a particular proof line within a proof
-    // i.e., checks if the proof rule in the given line has been applied correctly.
-    // Note that the provided proof line should exist in the proof, of course :)
+    /// This function checks the logical validity of a particular proof line within a proof
+    /// i.e., checks if the proof rule in the given line has been applied correctly.
+    ///
+    /// This function will return `Ok(())` if the proof rule in the given line has been applied
+    /// correctly. It will also return `Ok(())` if the given line is a premise, or a Fitch bar
+    /// line, or an empty line, since in those cases there is no justification to check.
+    ///
+    /// Note that the provided [ProofLine] should exist in the proof!
     fn check_line(&self, line: &ProofLine) -> Result<(), String> {
         if line.sentence.is_none() || line.is_premise {
             return Ok(());
@@ -1106,6 +1132,10 @@ impl Proof {
         }
     }
 
+    /// This function returns `true` if and only if the provided [Term] is a constant. For example,
+    /// if the provided term is a `Term::FuncApp` (function application), then `false` will be
+    /// returned. This function will also return `false` in case the provided [Term] is a variable
+    /// instead of a constant.
     fn term_is_constant(&self, term: Term) -> bool {
         match term {
             Term::FuncApp(..) => false,
@@ -1113,6 +1143,8 @@ impl Proof {
         }
     }
 
+    /// This function returns `true` if and only if the provided [Term] is a closed term, that is,
+    /// it contains no free variables.
     fn is_closed_term(&self, term: Term) -> bool {
         match term {
             Term::Atomic(str) => !self.allowed_variable_names.contains(&str),
@@ -1121,8 +1153,8 @@ impl Proof {
     }
 }
 
-// returns true iff term b can be obtained from term a by applying
-// the substitution subst *zero or more* times.
+/// This function returns `true` iff [Term] `b` can be obtained from [Term] `a` by applying
+/// the substitution `subst` *zero or more* times. 
 fn substitution_applied_term_zero_or_more_times(a: &Term, b: &Term, subst: (&Term, &Term)) -> bool {
     subst == (a, b)
         || a == b
@@ -1139,8 +1171,8 @@ fn substitution_applied_term_zero_or_more_times(a: &Term, b: &Term, subst: (&Ter
         }
 }
 
-// returns true iff wff b can be obtained from wff a by applying
-// the substitution subst *zero or more* times.
+/// This function returns `true` iff [Wff] `b` can be obtained from [Wff] `a` by applying
+/// the substitution `subst` *zero or more* times.
 fn substitution_applied_wff_zero_or_more_times(a: &Wff, b: &Wff, subst: (&Term, &Term)) -> bool {
     match (&a, &b) {
         (Wff::And(li1), Wff::And(li2)) | (Wff::Or(li1), Wff::Or(li2)) => {
@@ -1188,14 +1220,14 @@ fn substitution_applied_wff_zero_or_more_times(a: &Wff, b: &Wff, subst: (&Term, 
     }
 }
 
-// returns true iff wff b can be obtained from wff a by applying
-// the substitution subst *one or more* times.
+/// This function returns `true` iff [Wff] `b` can be obtained from [Wff] `a` by applying
+/// the substitution `subst` *one or more* times.
 fn substitution_applied_wff_one_or_more_times(a: &Wff, b: &Wff, subst: (&Term, &Term)) -> bool {
     (a != b && substitution_applied_wff_zero_or_more_times(a, b, subst))
         || (a == b && subst.0 == subst.1 && wff_contains_term(a, subst.0))
 }
 
-// returns true iff term a contains term b at least once (or term a and b are syntactically equal)
+// returns `true` iff [Term] `a` contains [Term] `b` at least once (or `a` and `b` are syntactically equal)
 fn term_contains_term(a: &Term, b: &Term) -> bool {
     match &a {
         Term::Atomic(_) => a == b,
@@ -1203,7 +1235,7 @@ fn term_contains_term(a: &Term, b: &Term) -> bool {
     }
 }
 
-// returns true iff wff a contains term b at least once
+// returns `true` iff [Wff] `a` contains [Term] `b` at least once
 fn wff_contains_term(a: &Wff, b: &Term) -> bool {
     match &a {
         Wff::Bottom | Wff::Atomic(_) => false,
@@ -1218,10 +1250,10 @@ fn wff_contains_term(a: &Wff, b: &Term) -> bool {
     }
 }
 
-// applies a substitution everywhere and returns the resulting wff.
-// Note that this substitution must be trivial: that is, the substitution
-// must be of the form <term1> -> <term2> where <term1> is an atomic term,
-// i.e. a constant or variable, so not a function application.
+/// This function applies a substitution everywhere and returns the resulting [Wff].
+/// Note that this substitution must be trivial: that is, the substitution
+/// must be of the form term1 -> term2 where term1 is an atomic term,
+/// i.e. a constant or variable, so not a function application.
 fn apply_trivial_substitution_everywhere_to_wff(wff: &Wff, subst: (&Term, &Term)) -> Wff {
     match subst.0 {
         Term::FuncApp(..) => panic!("Substitution is not trivial"),
@@ -1230,7 +1262,7 @@ fn apply_trivial_substitution_everywhere_to_wff(wff: &Wff, subst: (&Term, &Term)
 
     // applies a substitution everywhere and returns the resulting term.
     // Note that this substitution must be trivial: that is, the substitution
-    // must be of the form <term1> -> <term2> where <term1> is an atomic term,
+    // must be of the form term1 -> term2 where term1 is an atomic term,
     // i.e. a constant or variable, so not a function application.
     fn apply_trivial_substitution_everywhere_to_term(term: &Term, subst: (&Term, &Term)) -> Term {
         match subst.0 {
@@ -1287,15 +1319,15 @@ fn apply_trivial_substitution_everywhere_to_wff(wff: &Wff, subst: (&Term, &Term)
     }
 }
 
-// given two wffs, wff1 and wff2, this function tries to determine if there exists a *trivial*
-// substitution of the form A -> B where A is not equal to B such that wff2 can be
-// obtained from wff1 only by applying that substitution at
-// least one time. If such a substitution exists, then this function returns it. If such a
-// substitution does not exist, then the return value of this function is undefined! So, if this
-// function returns some substitution, you should always check it yourself that it is actually
-// possible to obtain wff2 from wff1 by only applying the substitution. If this function returns
-// None, then you know for sure that there exists no trivial substitution that can convert wff1
-// into wff2 by applying it at least once.
+/// Given two [Wff]s, `wff1` and `wff2`, this function tries to determine if there exists a *trivial*
+/// substitution of the form A -> B where A is not equal to B such that `wff2` can be
+/// obtained from `wff1` only by applying that substitution at
+/// least one time. If such a substitution exists, then this function returns it. If such a
+/// substitution does not exist, then the return value of this function is undefined! So, if this
+/// function returns some substitution, you should always check it yourself that it is actually
+/// possible to obtain `wff2` from `wff1` by only applying the substitution. If this function returns
+/// None, then you know for sure that there exists no trivial substitution that can convert `wff1`
+/// into `wff2` by applying it at least once.
 fn find_possible_trivial_substitution_wff(wff1: &Wff, wff2: &Wff) -> Option<(Term, Term)> {
     fn find_possible_trivial_substitution_term(term1: &Term, term2: &Term) -> Option<(Term, Term)> {
         if term1 == term2 {
