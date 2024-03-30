@@ -4,9 +4,10 @@
    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
 </head>
 
-<body style="text-align:center;padding-left:200px;padding-right:200px;background-color: aquamarine;">
-   <strong style="font-size:50px;">SUPER PROVER ULTRA++</strong><br>
-   <a href="https://github.com/el-sambal/fitch-proof" style="color:blue;text-decoration: none;font-family:monospace">https://github.com/el-sambal/fitch-proof</a><br><br>
+<body style="text-align:center;padding-left:200px;padding-right:200px;background-color: black;font-family: monospace;">
+   <strong style="font-size:50px;color:white;">SUPER PROVER ULTRA++</strong><br>
+   <a href="https://github.com/el-sambal/fitch-proof"
+      style="color:yellow;text-decoration: none;font-family:monospace">https://github.com/el-sambal/fitch-proof</a><br><br>
    <script type="module">
       import init, { check_proof, format_proof } from './pkg/fitch_proof.js';
       export async function run() {
@@ -37,7 +38,7 @@
       let advanced_settings_are_visible = false;
       function toggle_show_advanced_settings() {
          advanced_settings_are_visible = !advanced_settings_are_visible;
-         document.getElementById("advanced-settings").style.visibility = advanced_settings_are_visible ? "visible" : "hidden";
+         document.getElementById("advanced-settings").hidden = !advanced_settings_are_visible;
       }
 
       document.addEventListener('keydown', function (event) {
@@ -48,6 +49,7 @@
 
       document.getElementById("proof-field").onkeyup = run;
       document.getElementById("format-button").onclick = format;
+      document.getElementById("settings-button").onclick = toggle_show_advanced_settings;
       document.getElementById("allowed-variable-names").onkeyup = run;
       run();
    </script>
@@ -122,24 +124,24 @@
 50 | ∃x(∀y¬R(x,y) ∨ ∀y R(y,x))                ∨ Elim: 36, 42-49, 37-41
 </textarea><br>
 
-
+   <br>
    <div id="feedback"
-      style="display:inline-block;font-size:20px; border:5px solid purple;border-radius:5px;padding:3mm;margin:2px;background-color: antiquewhite;">
+      style="display:inline-block;font-size:20px; border:5px solid black;border-radius:13px;padding:3mm;margin:2px;background-color: white;">
    </div>
    <br>
    <div
-      style="border:3px solid black;font-size:24px; margin:8mm;background-color: antiquewhite;display:inline-block;padding:4mm;border-radius: 5px;">
+      style="border:3px solid black;font-size:24px; margin:8mm;background-color: white;display:inline-block;padding:4mm;border-radius: 5px;">
       Some copy-pasteable characters: ∧ ∨ ¬ → ↔ ⊥ ∀ ∃</div>
 
    <br>
    <br>
+
+   <button id="format-button" style="padding: 9px 9px">FORMAT PROOF</button>
+   <button id="settings-button" style="padding: 9px 9px">SHOW/HIDE SETTINGS</button>
+
    <br>
    <br>
-
-   <button id="format-button">Format proof</button>
-
-   <div id="advanced-settings"
-      style="background-color: coral;border: 3px solid black;border-radius: 10px;visibility: hidden;">
+   <div id="advanced-settings" style="background-color: white;border: 3px solid black;border-radius: 10px;" hidden>
       <strong>Settings (do not change unless you really have a good reason)</strong>
       <br><br>
       List of strings that should be recognized as variables (separated by commas): <input id="allowed-variable-names"
@@ -149,7 +151,6 @@
          strings that start with a lowercase letter will be seen as a constant or function symbol, depending on the
          context in which they are found.)</em>
    </div><br><br>
-   Press Alt+S to toggle visibility of settings
 </body>
 
 </html>
