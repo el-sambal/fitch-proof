@@ -9,7 +9,7 @@
    <a href="https://github.com/el-sambal/fitch-proof"
       style="color:yellow;text-decoration: none;font-family:monospace">https://github.com/el-sambal/fitch-proof</a><br><br>
    <script type="module">
-      import init, { check_proof, format_proof, fix_line_numbers_in_proof } from './pkg/fitch_proof.js';
+      import init, { check_proof, format_proof, fix_line_numbers_in_proof, export_to_latex } from './pkg/fitch_proof.js';
       export async function run() {
          await init();
 
@@ -41,6 +41,12 @@
          run();
       }
 
+      function to_latex() {
+         let latex = export_to_latex(document.getElementById("proof-field").value);
+         document.getElementById("proof-field").value = latex;
+         run();
+      }
+
       let advanced_settings_are_visible = false;
       function toggle_show_advanced_settings() {
          advanced_settings_are_visible = !advanced_settings_are_visible;
@@ -65,6 +71,7 @@
 
       document.getElementById("proof-field").onkeyup = run;
       document.getElementById("format-button").onclick = format;
+      document.getElementById("latex-button").onclick = to_latex;
       document.getElementById("upside-down-button").onclick = upside_down;
       document.getElementById("fix-line-numbers-button").onclick = fix_line_numbers;
       document.getElementById("settings-button").onclick = toggle_show_advanced_settings;
@@ -155,6 +162,7 @@
    <br>
    <br>
 
+   <button id="latex-button" style="padding: 9px 9px" title="Export proof to LaTeX">EXPORT TO LATEX</button>
    <button id="format-button" style="padding: 9px 9px" title="Make your proof more beautiful!">FORMAT PROOF</button>
    <button id="fix-line-numbers-button" style="padding: 9px 9px"
       title="Fix the line numbers in a proof, and automatically update justifications. For example, suppose you want to delete a line in the middle of your proof. In that case, you can just delete that line and press this button afterwards, which will fix up the line numbers. If you want to insert a line in the middle of your proof, just initially give it a line number of 100 or so, and click this button afterwards.">FIX

@@ -1,8 +1,8 @@
 use wasm_bindgen::prelude::*;
 mod checker;
 mod data;
-mod fix_line_numbers;
 mod export_to_latex;
+mod fix_line_numbers;
 mod formatter;
 mod parser;
 mod proof;
@@ -41,7 +41,10 @@ pub fn check_proof(proof: &str, allowed_variable_names: &str) -> String {
 ///
 /// This function never panics.
 fn check_proof_to_proofresult(proof: &str, allowed_variable_names: &str) -> ProofResult {
-    match (parser::parse_fitch_proof(proof), parser::parse_allowed_variable_names(allowed_variable_names)) {
+    match (
+        parser::parse_fitch_proof(proof),
+        parser::parse_allowed_variable_names(allowed_variable_names),
+    ) {
         (Ok(proof_lines), Ok(variable_names)) => checker::check_proof(proof_lines, variable_names),
         (Err(err), _) | (_, Err(err)) => ProofResult::FatalError(err),
     }
@@ -82,5 +85,14 @@ pub fn fix_line_numbers_in_proof(proof: &str) -> String {
             formatter::format_proof(lines)
         }
         _ => proof.to_owned(),
+    }
+}
+
+#[wasm_bindgen]
+pub fn export_to_latex(proof: &str) -> String {
+    match parser::parse_fitch_proof(proof) {
+        Ok(lines) if !lines.is_empty() => export_to_latex::proof_to_latex(&lines),
+        _ => "Failed to export to latex, because the proof could not be parsed or was empty."
+            .to_string(),
     }
 }

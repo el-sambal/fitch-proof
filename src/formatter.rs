@@ -63,31 +63,10 @@ pub fn format_proof(proof_lines: Vec<ProofLine>) -> String {
     line_strings.join("\n")
 }
 
-/* ------------------ PRIVATE -------------------- */
-
-/// Given a slice of [String]s, this function modifies it by padding all strings with spaces so
-/// as to be equally long as the longest [String] found in the slice, plus `extra` number of spaces.
-/// After calling this function, all strings in the slice have the same length.
-fn pad_to_same_length(strings: &mut [String], extra: usize) {
-    let longest_line_length = strings.iter().map(|x| x.chars().count()).max().unwrap();
-    for string in &mut *strings {
-        let pad_width = extra + longest_line_length - string.chars().count();
-        string.push_str(&" ".repeat(pad_width));
-    }
-}
-
-/// Formats a [Term].
-fn format_term(term: &Term) -> String {
-    match term {
-        Term::Atomic(t) => t.to_owned(),
-        Term::FuncApp(f, args) => {
-            format!("{}({})", f, args.iter().map(format_term).collect::<Vec<_>>().join(","))
-        }
-    }
-}
-
 /// Formats a [Wff].
-fn format_wff(wff: &Wff) -> String {
+///
+/// This function is public because it is also used by the LaTeX exporter.
+pub fn format_wff(wff: &Wff) -> String {
     fn wff_with_brackets(wff: &Wff) -> String {
         match wff {
             Wff::Bottom => "⊥".to_owned(),
@@ -128,6 +107,30 @@ fn format_wff(wff: &Wff) -> String {
         _ => wff_string,
     }
 }
+
+/* ------------------ PRIVATE -------------------- */
+
+/// Given a slice of [String]s, this function modifies it by padding all strings with spaces so
+/// as to be equally long as the longest [String] found in the slice, plus `extra` number of spaces.
+/// After calling this function, all strings in the slice have the same length.
+fn pad_to_same_length(strings: &mut [String], extra: usize) {
+    let longest_line_length = strings.iter().map(|x| x.chars().count()).max().unwrap();
+    for string in &mut *strings {
+        let pad_width = extra + longest_line_length - string.chars().count();
+        string.push_str(&" ".repeat(pad_width));
+    }
+}
+
+/// Formats a [Term].
+fn format_term(term: &Term) -> String {
+    match term {
+        Term::Atomic(t) => t.to_owned(),
+        Term::FuncApp(f, args) => {
+            format!("{}({})", f, args.iter().map(format_term).collect::<Vec<_>>().join(","))
+        }
+    }
+}
+
 
 /// Makes a [String] out of a [Justification].
 fn format_justification(just: &Justification) -> String {
