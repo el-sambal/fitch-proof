@@ -2,9 +2,9 @@ use std::iter::zip;
 
 use crate::data::*;
 
-// Formats a proof.
-//
-// PRECONDITION (panics otherwise): !proof_lines.is_empty()
+/// Formats a proof.
+///
+/// PRECONDITION (panics otherwise): !proof_lines.is_empty()
 pub fn format_proof(proof_lines: Vec<ProofLine>) -> String {
     // here we build the formatted proof
     let mut line_strings: Vec<String> = proof_lines
@@ -64,9 +64,9 @@ pub fn format_proof(proof_lines: Vec<ProofLine>) -> String {
 
 /* ------------------ PRIVATE -------------------- */
 
-// Given a slice of Strings, this function modifies it by padding all strings with spaces so
-// as to be equally long as the longest String found in the slice, plus `extra` number of spaces.
-// After calling this function, all strings in the slice have the same length.
+/// Given a slice of [String]s, this function modifies it by padding all strings with spaces so
+/// as to be equally long as the longest [String] found in the slice, plus `extra` number of spaces.
+/// After calling this function, all strings in the slice have the same length.
 fn pad_to_same_length(strings: &mut [String], extra: usize) {
     let longest_line_length = strings.iter().map(|x| x.chars().count()).max().unwrap();
     for string in &mut *strings {
@@ -75,6 +75,7 @@ fn pad_to_same_length(strings: &mut [String], extra: usize) {
     }
 }
 
+/// Formats a [Term].
 fn format_term(term: &Term) -> String {
     match term {
         Term::Atomic(t) => t.to_owned(),
@@ -84,6 +85,7 @@ fn format_term(term: &Term) -> String {
     }
 }
 
+/// Formats a [Wff].
 fn format_wff(wff: &Wff) -> String {
     fn wff_with_brackets(wff: &Wff) -> String {
         match wff {
@@ -126,6 +128,7 @@ fn format_wff(wff: &Wff) -> String {
     }
 }
 
+/// Makes a [String] out of a [Justification].
 fn format_justification(just: &Justification) -> String {
     match just {
         Justification::Reit(n) => format!("Reit: {n}"),
@@ -155,6 +158,7 @@ fn format_justification(just: &Justification) -> String {
     }
 }
 
+/// This function removes any spaces at the end of a [String].
 fn remove_whitespace_at_end(s: &mut String) {
     let rpo = s.chars().collect::<Vec<_>>().iter().rposition(|c| c != &' ').unwrap();
     *s=s.chars().take(rpo+1).collect::<String>();

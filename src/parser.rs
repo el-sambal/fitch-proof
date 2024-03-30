@@ -4,6 +4,13 @@ use std::iter::from_fn;
 
 use crate::data::*;
 
+/// This function takes a string slice and tries to parse it as a full proof.
+///
+/// If it succeeds, a vector of [ProofLine]s is returned. If it does not succeed, then a nice error
+/// message is returned.
+///
+/// For a specification of the grammar that is used for parsing, see the documentation of the
+/// functions [parse_proof_line] and [parse_logical_expr].
 pub fn parse_fitch_proof(proof: &str) -> Result<Vec<ProofLine>, String> {
     let mut last_line_num = 0;
     proof
@@ -22,6 +29,15 @@ pub fn parse_fitch_proof(proof: &str) -> Result<Vec<ProofLine>, String> {
         .collect()
 }
 
+/// This function parses the list of strings that should be seen as a variable. This list should
+/// simply be a string slice like this: "x,y,z", which means that "x", "y" and "z" are the strings
+/// that should be seen as a variable.
+///
+/// Note that the list should not contain duplicates and that it should not contain a 'variable'
+/// of which the name starts with an uppercase letter. If this happens, then an error message is
+/// returned. An error message is returned in all cases in which the parsing failed.
+///
+/// If the parsing is successful, a [HashSet] containing the allowed variable names is returned.
 pub fn parse_allowed_variable_names(allowed_var_names: &str) -> Result<HashSet<String>, String> {
     let toks = match lex(allowed_var_names) {
         Ok(toks) => toks,
@@ -60,6 +76,8 @@ pub fn parse_allowed_variable_names(allowed_var_names: &str) -> Result<HashSet<S
 
 /* ----------------- PRIVATE -------------------*/
 
+/// This is an enum containing tokens. The lexer converts a [String] to a vector of [Token]s, which
+/// can then be used by the parser.
 #[derive(PartialEq, Debug)]
 enum Token {
     Name(String),
@@ -83,6 +101,7 @@ enum Token {
     RSqBracket,
 }
 
+/// Generate a list of [Token]s from a [String]. If the lexer fails, a nice error message is returned.
 fn lex(input: &str) -> Result<Vec<Token>, String> {
     let mut toks: Vec<Token> = Vec::new();
     let mut input_iter = input.chars().peekable();
@@ -146,39 +165,44 @@ fn lex(input: &str) -> Result<Vec<Token>, String> {
     Ok(toks)
 }
 
-// The grammar: (brackets denote tokens; {} is EBNF notation for 0 or more times)
-//
-// <E1> ::=
-//            <E2>
-//          | <E2> and <E2> {and <E2>}
-//          | <E2> or <E2> {or <E2>}
-//          | <E2> implies <E2>
-//          | <E2> bicond <E2>
-//
-// <E2> ::=
-//            <E3>
-//          | <Term> equals <Term>
-//
-// <E3> ::=
-//            <PredicateName> <ArgList>
-//          | <AtomicPropositionName>
-//          | ( <E1> )
-//          | forall <VariableOrConstantName> <E3>
-//          | exists <VariableOrConstantName> <E3>
-//          | not <E3>
-//          | bottom
-//
-// <Term> ::=
-//              <FunctionName> <ArgList>
-//            | <VariableOrConstantName>
-//
-// <ArgList> ::= ( <Term> {, <Term>} )
-//
-// <FunctionName> : some string starting with a lowercase letter
-// <VariableOrConstantName> : some string starting with a lowercase letter
-// <PredicateName> : some string starting with an UPPERCASE letter
-// <AtomicPropositionName> : some string starting with an UPPERCASE letter
-
+/// This function parses a *logical expression* from a list of [Token]s.
+/// 
+/// If it succeeds, a [Wff] is returned. Otherwise, a nice error message is returned.
+///
+/// The grammar: (brackets denote tokens; {} is EBNF notation for 0 or more times)
+///
+/// ```notrust
+/// <E1> ::=
+///            <E2>
+///          | <E2> and <E2> {and <E2>}
+///          | <E2> or <E2> {or <E2>}
+///          | <E2> implies <E2>
+///          | <E2> bicond <E2>
+///
+/// <E2> ::=
+///            <E3>
+///          | <Term> equals <Term>
+///
+/// <E3> ::=
+///            <PredicateName> <ArgList>
+///          | <AtomicPropositionName>
+///          | ( <E1> )
+///          | forall <VariableOrConstantName> <E3>
+///          | exists <VariableOrConstantName> <E3>
+///          | not <E3>
+///          | bottom
+///
+/// <Term> ::=
+///              <FunctionName> <ArgList>
+///            | <VariableOrConstantName>
+///
+/// <ArgList> ::= ( <Term> {, <Term>} )
+///
+/// <FunctionName> : some string starting with a lowercase letter
+/// <VariableOrConstantName> : some string starting with a lowercase letter
+/// <PredicateName> : some string starting with an UPPERCASE letter
+/// <AtomicPropositionName> : some string starting with an UPPERCASE letter
+/// ```
 fn parse_logical_expr(toks: &[Token]) -> Result<Wff, String> {
     if let Some((wff, rem_toks)) = parse_e1(toks) {
         if rem_toks.is_empty() {
@@ -191,6 +215,7 @@ fn parse_logical_expr(toks: &[Token]) -> Result<Wff, String> {
     Err("failed to parse logical expression".to_string())
 }
 
+/// Parse an `<E1>` as defined by the grammar specified in the documentation of [parse_logical_expr].
 fn parse_e1(toks: &[Token]) -> Option<(Wff, &[Token])> {
     // always accept the first <E2>
     if let Some((wff, mut rem_toks)) = parse_e2(toks) {
@@ -246,6 +271,7 @@ fn parse_e1(toks: &[Token]) -> Option<(Wff, &[Token])> {
     None
 }
 
+/// Parse an `<E2>` as defined by the grammar specified in the documentation of [parse_logical_expr].
 fn parse_e2(toks: &[Token]) -> Option<(Wff, &[Token])> {
     // just <E3>
     if let Some((wff, rem_toks)) = parse_e3(toks) {
@@ -264,6 +290,7 @@ fn parse_e2(toks: &[Token]) -> Option<(Wff, &[Token])> {
     None
 }
 
+/// Parse an `<E3>` as defined by the grammar specified in the documentation of [parse_logical_expr].
 fn parse_e3(toks: &[Token]) -> Option<(Wff, &[Token])> {
     match toks.first()? {
         Token::Name(name) if name.chars().next()?.is_uppercase() => {
@@ -311,6 +338,7 @@ fn parse_e3(toks: &[Token]) -> Option<(Wff, &[Token])> {
     }
 }
 
+/// Parse a `<Term>` as defined by the grammar specified in the documentation of [parse_logical_expr].
 fn parse_term(toks: &[Token]) -> Option<(Term, &[Token])> {
     match toks.first()? {
         Token::Name(name) => {
@@ -324,6 +352,7 @@ fn parse_term(toks: &[Token]) -> Option<(Term, &[Token])> {
     }
 }
 
+/// Parse an `<ArgList>` as defined by the grammar specified in the documentation of [parse_logical_expr].
 fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
     if toks.first()? != &Token::LPar {
         return None;
@@ -352,51 +381,56 @@ fn parse_arg_list(toks: &[Token]) -> Option<(Vec<Term>, &[Token])> {
     }
 }
 
-// The grammar of a Fitch proof:
-//
-// <FitchProof> is several <FitchProofLine>s separated by newline
-// <FitchProofLine> ::=
-//                        <num> '|' { '|' } <E1> <Justification>             // non-premise
-//                      | <num> '|' { '|' } <E1>                             // premise
-//                      | <num> '|' { '|' } '[' <ConstantName> ']' [ <E1> ]  // premise with box
-//                      | '|' { '|' } - { - }                                // fitch bar
-//                      | '|' { '|' }                                        // empty line
-//
-// <ConstantName> : some string starting with lowercase letter
-//
-// <E1> is a full logical expression as parsed by the function parse_logical_expression_string();
-// the grammar for <E1> is defined in logic_expr.parser.rs.
-//
-// <num> is a non-negative decminal integer
-//
-// <Justification> ::=
-//                      | Reit: <num>
-//                      | And Intro: <num> {, <num>}
-//                      | And Elim: <num>
-//                      | Or Intro: <num>
-//                      | Or Elim: <num>, <numrange> {, <numrange>}
-//                      | Implies Intro: <numrange>
-//                      | Implies Elim: <num>, <num>
-//                      | Bicond Intro: <numrange>, <numrange>
-//                      | Bicond Elim: <num>, <num>
-//                      | Not Intro: <numrange>
-//                      | Not Elim: <num>
-//                      | Equals Intro
-//                      | Equals Elim: <num>, <num>
-//                      | Bottom Intro: <num>, <num>
-//                      | Bottom Elim: <num>
-//                      | Forall Intro: <numrange>
-//                      | Forall Elim: <num>
-//                      | Exists Intro: <num>
-//                      | Exists Elim: <num>, <numrange>
-//
-// Note that Fitch proof lines are not very straightforward to parse, because it can be difficult
-// to find the separation between the <E1> and the <Justification>. However, note that the Colon
-// token only appears in the <Justification>, not in <E1>, <num> or <ConstantName>. Hence, if we
-// want to parse a proof line, we first check whether there is a colon token in it. If there is,
-// then we parse the justification first. If the line ends with =Intro, then we also parse the
-// justification first (=Intro is the only justification without colon). For the rest, everything
-// can just be done normally from left to right.
+/// This function parses one proof line from a list of [Token]s.
+///
+/// The grammar of a Fitch proof:
+///
+/// ```notrust
+/// <FitchProof> is several <FitchProofLine>s separated by newline
+/// <FitchProofLine> ::=
+///                        <num> '|' { '|' } <E1> <Justification>             // non-premise
+///                      | <num> '|' { '|' } <E1>                             // premise
+///                      | <num> '|' { '|' } '[' <ConstantName> ']' [ <E1> ]  // premise with box
+///                      | '|' { '|' } - { - }                                // fitch bar
+///                      | '|' { '|' }                                        // empty line
+///
+/// <ConstantName> : some string starting with lowercase letter
+///
+/// <E1> is a full logical expression as parsed by the function parse_logical_expression_string();
+/// the grammar for <E1> is defined in logic_expr.parser.rs.
+///
+/// <num> is a non-negative decinal integer
+///
+/// <Justification> ::=
+///                      | Reit: <num>
+///                      | And Intro: <num> {, <num>}
+///                      | And Elim: <num>
+///                      | Or Intro: <num>
+///                      | Or Elim: <num>, <numrange> {, <numrange>}
+///                      | Implies Intro: <numrange>
+///                      | Implies Elim: <num>, <num>
+///                      | Bicond Intro: <numrange>, <numrange>
+///                      | Bicond Elim: <num>, <num>
+///                      | Not Intro: <numrange>
+///                      | Not Elim: <num>
+///                      | Equals Intro
+///                      | Equals Elim: <num>, <num>
+///                      | Bottom Intro: <num>, <num>
+///                      | Bottom Elim: <num>
+///                      | Forall Intro: <numrange>
+///                      | Forall Elim: <num>
+///                      | Exists Intro: <num>
+///                      | Exists Elim: <num>, <numrange>
+///
+/// ```
+///
+/// Note that Fitch proof lines are not very straightforward to parse, because it can be difficult
+/// to find the separation between the `<E1>` and the `<Justification>`. However, note that the Colon
+/// token only appears in the `<Justification>`, not in `<E1>`, `<num>` or `<ConstantName>`. Hence, if we
+/// want to parse a proof line, we first check whether there is a colon token in it. If there is,
+/// then we parse the justification first. If the line ends with =Intro, then we also parse the
+/// justification first (=Intro is the only justification without colon). For the rest, everything
+/// can just be done normally from left to right.
 
 fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
     if toks.contains(&Token::Colon)
@@ -535,6 +569,8 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
     }
 }
 
+/// Parse a justification, as specified by the grammar defined in the documentation for
+/// [parse_proof_line].
 fn parse_justification(toks: &[Token]) -> Result<Justification, String> {
     if toks.first().is_none() || toks.get(1).is_none() {
         return Err("failure when parsing justification; it seems not to be there?".to_string());
