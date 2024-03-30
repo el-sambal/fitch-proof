@@ -28,7 +28,7 @@ pub fn proof_to_latex(proof: &[ProofLine]) -> String {
                 },
                 l.line_num.unwrap(),
                 match &l.constant_between_square_brackets {
-                    Some(Term::Atomic(t)) => format!(" \\boxed{{{}}}~ ",t.to_string()),
+                    Some(Term::Atomic(t)) => format!(" \\boxed{{{}}}~ ", t.to_string()),
                     _ => "".to_string(),
                 },
                 match &l.sentence {
@@ -72,7 +72,10 @@ fn justification_to_latex(just: &Justification) -> String {
     match just {
         Justification::Reit(n) => format!("\\r{{{n}}}"),
         Justification::AndIntro(ns) => {
-            format!("\\ai{{{}}}", ns.iter().map(|n| n.to_string()).collect::<String>())
+            format!(
+                "\\ai{{{}}}",
+                ns.iter().map(|n| n.to_string()).collect::<Vec<String>>().join(",")
+            )
         }
         Justification::AndElim(n) => format!("\\ae{{{n}}}"),
         Justification::OrIntro(n) => format!("\\oi{{{n}}}"),
