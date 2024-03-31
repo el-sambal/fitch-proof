@@ -5,10 +5,10 @@ use std::iter::{self, from_fn};
 ///
 /// Known limitation: function does not work as expected if the string contains integers bigger
 /// than the maximum value of usize (it won't panic, but the final ordering might not be correct).
-pub fn natural_sort(strings: &mut [String]) {
+pub fn natural_sort<T: AsRef<str>>(strings: &mut [T]) {
     strings.sort_by(|s1, s2| {
-        let mut it1 = s1.chars().peekable();
-        let mut it2 = s2.chars().peekable();
+        let mut it1 = s1.as_ref().chars().peekable();
+        let mut it2 = s2.as_ref().chars().peekable();
         loop {
             match (it1.next(), it2.next()) {
                 (Some(c1 @ '0'..='9'), Some(c2 @ '0'..='9')) => {
