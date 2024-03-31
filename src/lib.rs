@@ -6,6 +6,7 @@ mod fix_line_numbers;
 mod formatter;
 mod parser;
 mod proof;
+mod util;
 use crate::data::ProofResult;
 
 macro_rules! default_variable_names {

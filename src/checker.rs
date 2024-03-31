@@ -1,4 +1,5 @@
 use crate::data::*;
+use crate::util;
 use crate::proof::*;
 use std::collections::{HashMap, HashSet};
 use std::iter::zip;
@@ -96,7 +97,7 @@ impl Proof {
         if errors.is_empty() {
             ProofResult::Correct
         } else {
-            errors.sort();
+            util::natural_sort(&mut errors);
             ProofResult::Error(errors)
         }
     }
