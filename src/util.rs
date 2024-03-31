@@ -1,12 +1,25 @@
 use std::cmp::Ordering;
 use std::iter::{self, from_fn};
 
-/// Sort a list of strings in a "human-friendly way".
+/// Sort a list of strings in a "human-friendly way". See examples...
 ///
 /// Known limitation: function does not work as expected if the string contains integers bigger
 /// than the maximum value of usize (it won't panic, but the final ordering might not be correct).
+///
+/// # Examples
+///
+/// ```ignore
+///  let mut unsorted =
+///      ["helloh", "hello2", "hello", "hello11", "hello1", "hello100", "42", "hello1000"];
+///  let sorted =
+///      ["42", "hello", "hello1", "hello2", "hello11", "hello100", "hello1000", "helloh"];
+
+///  natural_sort(&mut unsorted);
+///  assert_eq!(sorted, unsorted);
+/// ```
 pub fn natural_sort<T: AsRef<str>>(strings: &mut [T]) {
     strings.sort_by(|s1, s2| {
+        // I'm pretty sure this is a reflexive, transitive, antisymmetric relation ;)
         let mut it1 = s1.as_ref().chars().peekable();
         let mut it2 = s2.as_ref().chars().peekable();
         loop {
@@ -39,4 +52,19 @@ pub fn natural_sort<T: AsRef<str>>(strings: &mut [T]) {
             }
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_nat_sort_1() {
+        let mut unsorted =
+            ["helloh", "hello2", "hello", "hello11", "hello1", "hello100", "42", "hello1000"];
+        let sorted =
+            ["42", "hello", "hello1", "hello2", "hello11", "hello100", "hello1000", "helloh"];
+
+        natural_sort(&mut unsorted);
+        assert_eq!(sorted, unsorted);
+    }
 }
