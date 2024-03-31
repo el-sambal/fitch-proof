@@ -2,12 +2,12 @@
 
 <head>
    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+   <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 
-<body style="text-align:center;padding-left:200px;padding-right:200px;background-color: black;font-family: monospace;">
+<body>
    <strong style="font-size:50px;color:white;">SUPER PROVER ULTRA++</strong><br>
-   <a href="https://github.com/el-sambal/fitch-proof"
-      style="color:yellow;text-decoration: none;font-family:monospace">https://github.com/el-sambal/fitch-proof</a><br><br>
+   <a href="https://github.com/el-sambal/fitch-proof">https://github.com/el-sambal/fitch-proof</a><br><br>
    <script type="module">
       import init, { check_proof, format_proof, fix_line_numbers_in_proof, export_to_latex } from './pkg/fitch_proof.js';
       export async function run() {
@@ -78,8 +78,7 @@
       document.getElementById("allowed-variable-names").onkeyup = run;
       run();
    </script>
-   <textarea spellcheck="false" style="border:4px solid black;border-radius: 10px;padding:8px;" rows=30 cols=90
-      id="proof-field">
+   <textarea spellcheck="false" rows=30 cols=90 id="proof-field">
 1  | ∀x∃y R(x,y) → ∃y∀x R(x,y)
    | ---
 2  | | ¬(∀x∃y R(x,y) ∨ ¬∀x∃y R(x,y))
@@ -152,24 +151,23 @@
 
    <br>
    <div id="feedback"
-      style="display:inline-block;font-size:20px; border:5px solid black;border-radius:13px;padding:3mm;margin:2px;background-color: white;">
+      class="important-box">
    </div>
    <br>
-   <div
-      style="border:3px solid black;font-size:24px; margin:8mm;background-color: white;display:inline-block;padding:4mm;border-radius: 5px;">
+   <div class="important-box">
       Some copy-pasteable characters: ∧ ∨ ¬ → ↔ ⊥ ∀ ∃</div>
 
    <br>
    <br>
 
-   <button id="latex-button" style="padding: 9px 9px" title="Export proof to LaTeX">EXPORT TO LATEX</button>
-   <button id="format-button" style="padding: 9px 9px" title="Make your proof more beautiful!">FORMAT PROOF</button>
-   <button id="fix-line-numbers-button" style="padding: 9px 9px"
+   <button id="latex-button" title="Export proof to LaTeX">EXPORT TO LATEX</button>
+   <button id="format-button" title="Make your proof more beautiful!">FORMAT PROOF</button>
+   <button id="fix-line-numbers-button"
       title="Fix the line numbers in a proof, and automatically update justifications. For example, suppose you want to delete a line in the middle of your proof. In that case, you can just delete that line and press this button afterwards, which will fix up the line numbers. If you want to insert a line in the middle of your proof, just initially give it a line number of 100 or so, and click this button afterwards.">FIX
       LINE NUMBERS</button>
-   <button id="settings-button" style="padding: 9px 9px" title="Toggle visibility of the settings">SHOW/HIDE
+   <button id="settings-button" title="Toggle visibility of the settings">SHOW/HIDE
       SETTINGS</button>
-   <button id="upside-down-button" style="padding: 9px 9px" title="Rotate proof...">ROTATE PROOF</button>
+   <button id="upside-down-button" title="Rotate proof...">ROTATE PROOF</button>
 
    <br>
    <br>

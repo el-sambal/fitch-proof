@@ -2,6 +2,7 @@ use crate::data::*;
 use crate::formatter::format_wff;
 use std::fmt::Write;
 
+/// Exports a proof to a string that can be put in a LaTeX document.
 pub fn proof_to_latex(proof: &[ProofLine]) -> String {
     let mut prev_depth = 1;
     let mut is_hypo = true;
@@ -23,7 +24,7 @@ pub fn proof_to_latex(proof: &[ProofLine]) -> String {
             ""
         };
         let part2 = format!(
-            "{}{{{}}}{{{}{}}}", // this is your fate if you write a latex exporter
+            "{}{{{}}}{{{}{}}}",
             if is_hypo {
                 "\\hypo"
             } else {
@@ -35,7 +36,7 @@ pub fn proof_to_latex(proof: &[ProofLine]) -> String {
                 _ => "".to_string(),
             },
             match &l.sentence {
-                Some(wff) => sentence_to_latex(wff),
+                Some(wff) => wff_to_latex(wff),
                 _ => "".to_string(),
             },
         );
@@ -55,7 +56,8 @@ pub fn proof_to_latex(proof: &[ProofLine]) -> String {
 
 /* ------------------ PRIVATE -------------------- */
 
-fn sentence_to_latex(wff: &Wff) -> String {
+/// Converts a [Wff] to a LaTeX string. This uses [format_wff] under the hood.
+fn wff_to_latex(wff: &Wff) -> String {
     let formatted = format_wff(wff);
 
     // better too many spaces then not enough...
@@ -71,6 +73,7 @@ fn sentence_to_latex(wff: &Wff) -> String {
         .replace('∃', "\\exists ")
 }
 
+/// Converts a [Justification] to a LaTeX string.
 fn justification_to_latex(just: &Justification) -> String {
     match just {
         Justification::Reit(n) => format!("\\r{{{n}}}"),
