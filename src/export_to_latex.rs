@@ -4,12 +4,17 @@ use std::fmt::Write;
 
 pub fn proof_to_latex(proof: &[ProofLine]) -> String {
     let mut prev_depth = 1;
+    let mut is_hypo = true;
     let proof_str = proof.iter().fold(String::new(), |mut output, l| {
+        if l.is_fitch_bar_line {
+            is_hypo = false;
+        }
         if l.line_num.is_none() {
             return output;
         }
         let part1 = if l.depth == prev_depth + 1 {
             prev_depth += 1;
+            is_hypo = true;
             "\\open\n"
         } else if l.depth == prev_depth - 1 {
             prev_depth -= 1;
@@ -19,7 +24,7 @@ pub fn proof_to_latex(proof: &[ProofLine]) -> String {
         };
         let part2 = format!(
             "{}{{{}}}{{{}{}}}", // this is your fate if you write a latex exporter
-            if l.justification.is_none() {
+            if is_hypo {
                 "\\hypo"
             } else {
                 "\\have"
