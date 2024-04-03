@@ -131,7 +131,6 @@ fn format_term(term: &Term) -> String {
     }
 }
 
-
 /// Makes a [String] out of a [Justification].
 fn format_justification(just: &Justification) -> String {
     match just {

@@ -166,7 +166,7 @@ fn lex(input: &str) -> Result<Vec<Token>, String> {
 }
 
 /// This function parses a *logical expression* from a list of [Token]s.
-/// 
+///
 /// If it succeeds, a [Wff] is returned. Otherwise, a nice error message is returned.
 ///
 /// The grammar: (brackets denote tokens; {} is EBNF notation for 0 or more times)
