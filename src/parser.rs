@@ -512,7 +512,7 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
                 {
                     const_betw_sqbr = Some(Term::Atomic(name.to_string()));
                     if !name.chars().next().unwrap_or('U').is_lowercase() {
-                        return Err("a boxed constant must be a constant; as such, it should start with a lowercase letter".to_string());
+                        return Err("a boxed constant must be a constant; it should start with a lowercase letter".to_string());
                     }
                     if toks.len() == 5 {
                         // this premise contains only a boxed constant, no further expression:
@@ -530,6 +530,16 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
                 } else {
                     2
                 };
+
+                // give error if it seems like the user tried to make a boxed constant but failed
+                if (toks.contains(&Token::LSqBracket) || toks.contains(&Token::RSqBracket))
+                    && expression_start_index != 5
+                {
+                    return Err("failed when trying to read boxed constant (if \
+                        you did not intend to introduce a boxed constant in this \
+                        proof line, remove the characters \'[\' and \']\' from this line)"
+                        .to_string());
+                }
 
                 let wff = parse_logical_expr(toks.get(expression_start_index..).unwrap_or(&[]))?;
 
