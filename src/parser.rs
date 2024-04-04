@@ -477,7 +477,6 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
                 Ok(ProofLine {
                     line_num: Some(*line_num),
                     depth: *depth,
-                    is_premise: false,
                     is_fitch_bar_line: false,
                     sentence: Some(wff),
                     justification: Some(justific),
@@ -521,7 +520,6 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
                         return Ok(ProofLine {
                             line_num: Some(*num),
                             depth: *depth,
-                            is_premise: true,
                             is_fitch_bar_line: false,
                             sentence: None,
                             justification: None,
@@ -538,7 +536,6 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
                 Ok(ProofLine {
                     line_num: Some(*num),
                     depth: *depth,
-                    is_premise: true,
                     is_fitch_bar_line: false,
                     sentence: Some(wff),
                     justification: None,
@@ -550,7 +547,6 @@ fn parse_proof_line(toks: &[Token]) -> Result<ProofLine, String> {
                     Ok(ProofLine {
                         line_num: None,
                         depth: *depth,
-                        is_premise: false,
                         // if there is a dash, then this is a fitch bar. Otherwise it's an empty line.
                         is_fitch_bar_line: toks[1..].contains(&Token::Dash),
                         sentence: None,

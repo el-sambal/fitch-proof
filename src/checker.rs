@@ -629,7 +629,8 @@ impl Proof {
     ///
     /// Note that the provided [ProofLine] should exist in the proof!
     fn check_line(&self, line: &ProofLine) -> Result<(), String> {
-        if line.sentence.is_none() || line.justification.is_none() || line.is_premise {
+        // this function only checks lines that have a justification...
+        if line.justification.is_none() {
             return Ok(());
         }
 

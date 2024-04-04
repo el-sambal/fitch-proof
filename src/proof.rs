@@ -98,9 +98,9 @@ impl Proof {
             }
             if let Some(line_num) = line.line_num {
                 last_line_num = line_num;
-                if line.is_premise && line.constant_between_square_brackets.is_none() {
+                if line.justification.is_none() && line.constant_between_square_brackets.is_none() {
                     units.push(ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(line_num));
-                } else if line.is_premise {
+                } else if line.justification.is_none() {
                     units.push(ProofUnit::NumberedProofLinePremiseWithBoxedConstant(line_num));
                 } else {
                     units.push(ProofUnit::NumberedProofLineInference(line_num));

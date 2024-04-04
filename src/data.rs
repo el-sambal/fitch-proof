@@ -34,8 +34,6 @@ pub struct ProofLine {
     ///
     /// `42 | | | | P(a,b,c,d)  =Elim:137,108`
     pub depth: usize,          
-    /// TODO: is this field actually necessary to have? Probably not!
-    pub is_premise: bool, // true if either a main proof premise or subproof premise
     // This field is `true` if and only if the corresponding proof line is a Fitch bar line.
     pub is_fitch_bar_line: bool,
     // The logical sentence ([Wff]) that this proof line contains.
