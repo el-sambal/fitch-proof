@@ -1013,6 +1013,206 @@ fn test_exists_intro_zero_or_more_8() {
     assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
 #[test]
+fn test_exists_intro_complex_term_1() {
+    let proof = "
+1 | P(f(a))
+  | ---
+2 | ∃x P(f(x)) ∃Intro:1
+";
+
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_2() {
+    let proof = "
+1 | P(f(a))
+  | ---
+2 | ∃x P(x) ∃Intro:1
+";
+
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_3() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(x) ∃Intro:1
+";
+
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_4() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(f(x,h(a))) ∃Intro:1
+";
+
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_5() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(f(x,x)) ∃Intro:1
+";
+
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_6() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(f(g(a),x)) ∃Intro:1
+";
+
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_7() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(f(x)) ∃Intro:1
+";
+
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_8() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(x) ∃Intro:1
+";
+
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_9() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(f(g(x),h(a))) ∃Intro:1
+";
+
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_10() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(f(g(a),h(x))) ∃Intro:1
+";
+
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_11() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(f(g(x),h(x))) ∃Intro:1
+";
+
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_12() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(f(g(x),x)) ∃Intro:1
+";
+
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_13() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(f(x,h(x))) ∃Intro:1
+";
+
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_14() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(f(g(a),h(a))) ∃Intro:1
+";
+
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_15() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(h(g(a),h(a))) ∃Intro:1
+";
+
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_16() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(k(g(a),h(a))) ∃Intro:1
+";
+
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_17() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(f(h(a),g(a))) ∃Intro:1
+";
+
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_18() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(f(g(a),g(a))) ∃Intro:1
+";
+
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_19() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(f(g(x),g(a))) ∃Intro:1
+";
+
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_complex_term_20() {
+    let proof = "
+1 | P(f(g(a),h(a)))
+  | ---
+2 | ∃x P(f(g(x))) ∃Intro:1
+";
+
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
 fn test_bicond_elim_1() {
     let proof = "
 1 | A↔B
