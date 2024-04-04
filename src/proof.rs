@@ -51,9 +51,9 @@ pub struct Proof {
 /// Empty lines are not representable in terms of [ProofUnit]s (and this is also not necessary).
 #[derive(Debug, PartialEq)]
 pub enum ProofUnit {
-    NumberedProofLineInference(usize), // usize is line number
-    NumberedProofLinePremiseWithoutBoxedConstant(usize), // usize is line number
-    NumberedProofLinePremiseWithBoxedConstant(usize), // usize is line number
+    NumberedProofLineWithJustification(usize), // usize is line number
+    NumberedProofLineWithoutJustificationWithoutBoxedConstant(usize), // usize is line number
+    NumberedProofLineThatIntroducesBoxedConstant(usize), // usize is line number
     FitchBarLine,
     SubproofOpen,
     SubproofClose,
@@ -99,11 +99,11 @@ impl Proof {
             if let Some(line_num) = line.line_num {
                 last_line_num = line_num;
                 if line.justification.is_none() && line.constant_between_square_brackets.is_none() {
-                    units.push(ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(line_num));
+                    units.push(ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(line_num));
                 } else if line.justification.is_none() {
-                    units.push(ProofUnit::NumberedProofLinePremiseWithBoxedConstant(line_num));
+                    units.push(ProofUnit::NumberedProofLineThatIntroducesBoxedConstant(line_num));
                 } else {
-                    units.push(ProofUnit::NumberedProofLineInference(line_num));
+                    units.push(ProofUnit::NumberedProofLineWithJustification(line_num));
                 }
             }
             if line.is_fitch_bar_line {
@@ -119,15 +119,15 @@ impl Proof {
         let last_line_number: usize = units
             .iter()
             .filter_map(|u| match u {
-                ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(num)
-                | ProofUnit::NumberedProofLineInference(num) => Some(*num),
+                ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(num)
+                | ProofUnit::NumberedProofLineWithJustification(num) => Some(*num),
                 _ => None,
             })
             .last()
             .unwrap();
         let mut scope: Scope = vec![(vec![], vec![]); last_line_number + 1];
         for i in 0..units.len() {
-            if let ProofUnit::NumberedProofLineInference(num) = units[i] {
+            if let ProofUnit::NumberedProofLineWithJustification(num) = units[i] {
                 // used to find referenceable single lines
                 let mut depth: i32 = 0;
 
@@ -140,12 +140,12 @@ impl Proof {
                             if depth > 0 {
                                 depth -= 1;
                                 let subproof_begin;
-                                if let ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(
+                                if let ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(
                                     s_begin,
                                 ) = units[j + 1]
                                 {
                                     subproof_begin = s_begin;
-                                } else if let ProofUnit::NumberedProofLinePremiseWithBoxedConstant(
+                                } else if let ProofUnit::NumberedProofLineThatIntroducesBoxedConstant(
                                     s_begin,
                                 ) = units[j + 1]
                                 {
@@ -161,16 +161,16 @@ impl Proof {
                         }
                         ProofUnit::SubproofClose => {
                             depth += 1;
-                            if let ProofUnit::NumberedProofLineInference(subproof_end) =
+                            if let ProofUnit::NumberedProofLineWithJustification(subproof_end) =
                                 units[j - 1]
                             {
                                 stack.push(subproof_end);
-                            } else if let ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(
+                            } else if let ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(
                                 subproof_end,
                             ) = units[j - 1]
                             {
                                 stack.push(subproof_end);
-                            } else if let ProofUnit::NumberedProofLinePremiseWithBoxedConstant(
+                            } else if let ProofUnit::NumberedProofLineThatIntroducesBoxedConstant(
                                 subproof_end,
                             ) = units[j - 1]
                             {
@@ -179,9 +179,9 @@ impl Proof {
                                 panic!("This really should not happen. This is a mistake by the developer. Please contact me if you get this.");
                             }
                         }
-                        ProofUnit::NumberedProofLineInference(ref_num)
-                        | ProofUnit::NumberedProofLinePremiseWithBoxedConstant(ref_num)
-                        | ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(ref_num) => {
+                        ProofUnit::NumberedProofLineWithJustification(ref_num)
+                        | ProofUnit::NumberedProofLineThatIntroducesBoxedConstant(ref_num)
+                        | ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(ref_num) => {
                             if depth == 0 {
                                 scope[num].0.push(ref_num);
                             }
@@ -223,7 +223,7 @@ impl Proof {
         }
         match units[0] {
             ProofUnit::FitchBarLine => {}
-            ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(_) => {}
+            ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(_) => {}
             _ => {
                 return Err("Error: proof should start with premises (or \
                 Fitch bar, if there are no premises)."
@@ -242,9 +242,9 @@ impl Proof {
                         return Err("The proof ends with a Fitch bar.".to_string());
                     } else {
                         match units[i + 1] {
-                            ProofUnit::NumberedProofLineInference(_) => {}
+                            ProofUnit::NumberedProofLineWithJustification(_) => {}
                             ProofUnit::SubproofOpen => {}
-                            ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(_) => {}
+                            ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(_) => {}
                             _ => {
                                 return Err("Error: Fitch bars should be followed by \
                                            either a new subproof or an inference. \
@@ -263,8 +263,8 @@ impl Proof {
                             .to_string());
                     }
                     match units[i + 1] {
-                        ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(_)
-                        | ProofUnit::NumberedProofLinePremiseWithBoxedConstant(_) => {}
+                        ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(_)
+                        | ProofUnit::NumberedProofLineThatIntroducesBoxedConstant(_) => {}
                         _ => {
                             return Err(
                                 "Error: the first line on any new subproof should be a premise."
@@ -295,9 +295,9 @@ impl Proof {
                         }
                     } else {
                         match units[i + 1] {
-                            ProofUnit::NumberedProofLineInference(_) => {}
+                            ProofUnit::NumberedProofLineWithJustification(_) => {}
                             ProofUnit::SubproofOpen => {}
-                            ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(_) => {}
+                            ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(_) => {}
                             _ => {
                                 return Err("Error: after closing a subproof, either you \
                                      should open a new subproof or there should be \
@@ -307,7 +307,7 @@ impl Proof {
                         }
                     }
                 }
-                ProofUnit::NumberedProofLineInference(_) => {
+                ProofUnit::NumberedProofLineWithJustification(_) => {
                     // in HALF-well-structured proofs, after an inference there should be either:
                     //  - the end of the subproof
                     //  - the opening of a new subproof
@@ -316,23 +316,23 @@ impl Proof {
                     //    and a proof MAY end directly after an inference.
                     if i + 1 < units.len() {
                         match units[i + 1] {
-                            ProofUnit::NumberedProofLineInference(_)
+                            ProofUnit::NumberedProofLineWithJustification(_)
                             | ProofUnit::SubproofOpen
                             | ProofUnit::SubproofClose => {}
-                            ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(_) => {}
+                            ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(_) => {}
                             ProofUnit::FitchBarLine => {
                                 return Err("Error: you cannot have a Fitch bar \
                                         after an inference. Maybe you are giving \
                                         justification for a premise?"
                                     .to_string());
                             }
-                            ProofUnit::NumberedProofLinePremiseWithBoxedConstant(_) =>{
+                            ProofUnit::NumberedProofLineThatIntroducesBoxedConstant(_) =>{
                                 return Err("Error: a boxed constant can only be introduced in the premise of a subproof".to_owned())
                             }
                         }
                     }
                 }
-                ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(_) => {
+                ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(_) => {
                     // in HALF-well-structured proofs, after a premise w/out b.c. there should be either:
                     //  - a Fitch bar line
                     //  - another premise without boxed constant
@@ -345,15 +345,15 @@ impl Proof {
                     //
                     if i + 1 < units.len() {
                         match units[i+1] {
-                            ProofUnit::FitchBarLine | ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(_) | ProofUnit::NumberedProofLineInference(_) | ProofUnit::SubproofOpen | ProofUnit::SubproofClose => {}
-                            ProofUnit::NumberedProofLinePremiseWithBoxedConstant(_) => {
+                            ProofUnit::FitchBarLine | ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(_) | ProofUnit::NumberedProofLineWithJustification(_) | ProofUnit::SubproofOpen | ProofUnit::SubproofClose => {}
+                            ProofUnit::NumberedProofLineThatIntroducesBoxedConstant(_) => {
                                 return Err("Error: a boxed constant can only be introduced in the premise of a subproof".to_owned())
                             }
                         }
                     }
                 }
 
-                ProofUnit::NumberedProofLinePremiseWithBoxedConstant(_) => {
+                ProofUnit::NumberedProofLineThatIntroducesBoxedConstant(_) => {
                     // in HALF-well-structured proofs, after a premise with b.c. there must be:
                     //  - a Fitch bar line
                     //    and a proof MUST NOT end directly after a premise with b.c.
@@ -378,9 +378,9 @@ impl Proof {
         let mut prev_num = 0;
         for unit in units {
             match unit {
-                ProofUnit::NumberedProofLinePremiseWithBoxedConstant(num)
-                | ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(num)
-                | ProofUnit::NumberedProofLineInference(num) => {
+                ProofUnit::NumberedProofLineThatIntroducesBoxedConstant(num)
+                | ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(num)
+                | ProofUnit::NumberedProofLineWithJustification(num) => {
                     if *num != 1 + prev_num {
                         return Err(format!("Line numbers are wrong; discrepancy between line {prev_num} and {num}..."));
                     }

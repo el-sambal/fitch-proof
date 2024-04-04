@@ -46,7 +46,7 @@ impl Proof {
                 .units
                 .iter()
                 .take_while(|u| **u != ProofUnit::FitchBarLine)
-                .all(|u| matches!(*u, ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(..)))
+                .all(|u| matches!(*u, ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(..)))
         {
             errors.push(
                 "Each proof should start start with zero or more premises, followed by a Fitch bar"
@@ -118,9 +118,9 @@ impl Proof {
                     expect_justification = false;
                 }
                 ProofUnit::SubproofClose => {}
-                ProofUnit::NumberedProofLineInference(_) => {}
-                ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(num)
-                | ProofUnit::NumberedProofLinePremiseWithBoxedConstant(num) => {
+                ProofUnit::NumberedProofLineWithJustification(_) => {}
+                ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(num)
+                | ProofUnit::NumberedProofLineThatIntroducesBoxedConstant(num) => {
                     if expect_justification {
                         res.push(num);
                     }
@@ -187,7 +187,7 @@ impl Proof {
         for i in 0..self.units.len() {
             match self.units[i] {
                 ProofUnit::FitchBarLine => {}
-                ProofUnit::NumberedProofLinePremiseWithBoxedConstant(num) => {
+                ProofUnit::NumberedProofLineThatIntroducesBoxedConstant(num) => {
                     let new_boxed_const =
                         &self.get_proofline_at_line_unsafe(num).constant_between_square_brackets;
 
@@ -211,7 +211,7 @@ impl Proof {
                         }
                     }
                 }
-                ProofUnit::NumberedProofLinePremiseWithoutBoxedConstant(num) => {
+                ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(num) => {
                     currently_in_scope.push(None);
 
                     let prfln = self.get_proofline_at_line_unsafe(num);
@@ -224,7 +224,7 @@ impl Proof {
                         errors.push(err);
                     }
                 }
-                ProofUnit::NumberedProofLineInference(num) => {
+                ProofUnit::NumberedProofLineWithJustification(num) => {
                     let prfln = self.get_proofline_at_line_unsafe(num);
                     if let Err(err) = check_wff_not_contain_out_of_scope_boxed_consts(
                         prfln.sentence.as_ref().unwrap(),
