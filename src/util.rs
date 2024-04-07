@@ -19,7 +19,7 @@ use std::iter::{self, from_fn};
 /// ```
 pub fn natural_sort<T: AsRef<str>>(strings: &mut [T]) {
     strings.sort_by(|s1, s2| {
-        // I'm pretty sure this is a reflexive, transitive, antisymmetric relation ;)
+        // I'm pretty sure this is a total order relation ;)
         let mut it1 = s1.as_ref().chars().peekable();
         let mut it2 = s2.as_ref().chars().peekable();
         loop {
