@@ -108,6 +108,16 @@ pub fn format_wff(wff: &Wff) -> String {
     }
 }
 
+/// Formats a [Term].
+pub fn format_term(term: &Term) -> String {
+    match term {
+        Term::Atomic(t) => t.to_owned(),
+        Term::FuncApp(f, args) => {
+            format!("{}({})", f, args.iter().map(format_term).collect::<Vec<_>>().join(","))
+        }
+    }
+}
+
 /* ------------------ PRIVATE -------------------- */
 
 /// Given a slice of [String]s, this function modifies it by padding all strings with spaces so
@@ -118,16 +128,6 @@ fn pad_to_same_length(strings: &mut [String], extra: usize) {
     for string in &mut *strings {
         let pad_width = extra + longest_line_length - string.chars().count();
         string.push_str(&" ".repeat(pad_width));
-    }
-}
-
-/// Formats a [Term].
-fn format_term(term: &Term) -> String {
-    match term {
-        Term::Atomic(t) => t.to_owned(),
-        Term::FuncApp(f, args) => {
-            format!("{}({})", f, args.iter().map(format_term).collect::<Vec<_>>().join(","))
-        }
     }
 }
 

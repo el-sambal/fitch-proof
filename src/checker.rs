@@ -42,11 +42,12 @@ impl Proof {
 
         // check that proof starts with zero or more premises, followed by a Fitch bar
         if !self.units.iter().any(|u| *u == ProofUnit::FitchBarLine)
-            || !self
-                .units
-                .iter()
-                .take_while(|u| **u != ProofUnit::FitchBarLine)
-                .all(|u| matches!(*u, ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(..)))
+            || !self.units.iter().take_while(|u| **u != ProofUnit::FitchBarLine).all(|u| {
+                matches!(
+                    *u,
+                    ProofUnit::NumberedProofLineWithoutJustificationWithoutBoxedConstant(..)
+                )
+            })
         {
             errors.push(
                 "Each proof should start start with zero or more premises, followed by a Fitch bar"
@@ -1033,7 +1034,7 @@ impl Proof {
                 let Wff::Forall(var, ref_wff) = self.get_wff_at_line(curr_line_num, *n)? else {
                     return Err(format!(
                         "Line {curr_line_num}: the justification \
-                        ∀Elim:{n} is used, but line {n} is not a \
+                        ∀Elim:{n} is used, but the sentence at line {n} is not a \
                         universally quantified sentence at the top level"
                     ));
                 };
@@ -1044,13 +1045,16 @@ impl Proof {
                         == *curr_wff
                         && Term::Atomic(var.to_string()) == term1
                     {
-                        return if self.is_closed_term(term2) {
+                        return if self.is_closed_term(&term2) {
                             Ok(())
                         } else {
                             Err(format!(
                                 "Line {curr_line_num}: the rule ∀Elim:{n} is used, \
-                                                but you did not substitute a *closed* term for \
-                                                all occurrences of the variable {var} in line {n}"
+                                 but {} is not a closed term (so you cannot substitute {}
+                                 for all occurences of {var} in line {})",
+                                formatter::format_term(&term2),
+                                formatter::format_term(&term2),
+                                *n
                             ))
                         };
                     }
@@ -1078,14 +1082,14 @@ impl Proof {
                         (&term1, &term2),
                     ) && Term::Atomic(var.to_string()) == term1
                     {
-                        return if self.is_closed_term(term2) {
+                        return if self.is_closed_term(&term2) {
                             Ok(())
                         } else {
                             Err(format!(
                                 "Line {curr_line_num}: the rule ∃Intro:{n} is \
-                                used, but the term in line {n} that you \
-                                substitute {var} for in line {curr_line_num} \
-                                is not a *closed* term"
+                                used, but {} in line {} is not a closed term",
+                                formatter::format_term(&term2),
+                                *n
                             ))
                         };
                     }
@@ -1165,11 +1169,11 @@ impl Proof {
     }
 
     /// This function returns `true` if and only if the provided [Term] is a closed term, that is,
-    /// it contains no free variables.
-    fn is_closed_term(&self, term: Term) -> bool {
+    /// it recursively contains no free variables.
+    fn is_closed_term(&self, term: &Term) -> bool {
         match term {
-            Term::Atomic(str) => !self.allowed_variable_names.contains(&str),
-            Term::FuncApp(_, args) => args.iter().all(|a| self.is_closed_term(a.clone())),
+            Term::Atomic(str) => !self.allowed_variable_names.contains(str),
+            Term::FuncApp(_, args) => args.iter().all(|a| self.is_closed_term(a)),
         }
     }
 }
