@@ -993,8 +993,9 @@ impl Proof {
                     Err(format!(
                         "Line {curr_line_num}: the rule =Elim:{n},{m} \
                             is used, but is is impossible to obtain line {curr_line_num} \
-                            from line {n} by substituting one or more occurrences of (term1) by \
-                            (term2), where line {m} is (term1) = (term2)"
+                            from line {n} by changing one or more occurrences of {} to {}",
+                            formatter::format_term(subst_old),
+                            formatter::format_term(subst_new),
                     ))
                 }
             }
@@ -1025,7 +1026,7 @@ impl Proof {
                     (&Term::Atomic(var.to_string()), boxed_const),
                 ) != *s_end.sentence.as_ref().unwrap()
                 {
-                    return Err(format!("Line {curr_line_num}: the rule ∀Intro:{sb}-{se} is used, but if all occurrences of {var} in the quantified part of line {curr_line_num} are replaced by {bc}, then one does not obtain the sentence in line {se}, but this should be the case"));
+                    return Err(format!("Line {curr_line_num}: the rule ∀Intro:{sb}-{se} is used, but if all occurrences of {var} in the quantified part of line {curr_line_num} are replaced by {bc}, one does not obtain the sentence in line {se}"));
                 }
 
                 Ok(())
