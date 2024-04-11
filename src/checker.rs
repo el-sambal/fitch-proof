@@ -940,7 +940,14 @@ impl Proof {
                         }
                     }
                 }
-                Err(format!("Line {curr_line_num}: ¬Elim is used improperly."))
+                if let Wff::Not(negd_wff) = curr_wff {
+                    if let Wff::Not(negd_negd_wff) = &**negd_wff {
+                        if *self.get_wff_at_line(curr_line_num, *n)? == **negd_negd_wff {
+                            return Err(format!("Line {curr_line_num}: ¬Elim can only be used to go from ¬¬P to P, not the other way around"));
+                        }
+                    }
+                }
+                Err(format!("Line {curr_line_num}: ¬Elim is used improperly"))
             }
             Justification::BottomIntro(n, m) => {
                 let wff1 = self.get_wff_at_line(curr_line_num, *n)?;
@@ -994,8 +1001,8 @@ impl Proof {
                         "Line {curr_line_num}: the rule =Elim:{n},{m} \
                             is used, but is is impossible to obtain line {curr_line_num} \
                             from line {n} by changing one or more occurrences of {} to {}",
-                            formatter::format_term(subst_old),
-                            formatter::format_term(subst_new),
+                        formatter::format_term(subst_old),
+                        formatter::format_term(subst_new),
                     ))
                 }
             }
