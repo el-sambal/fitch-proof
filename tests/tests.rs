@@ -1923,3 +1923,246 @@ fn test_equals_elim_diff_number_of_disjs_2() {
 ";
     assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
+#[test]
+fn test_not_elim_1() {
+    let proof = "
+1 | ¬¬P
+  |-
+2 | Q ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_2() {
+    let proof = "
+1 | ¬¬P
+  |-
+2 | P ¬Elim:1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_3() {
+    let proof = "
+1 | ¬P
+  |-
+2 | P ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_4() {
+    let proof = "
+1 | P
+  |-
+2 | P ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_5() {
+    let proof = "
+1 | P
+  |-
+2 | ¬P ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_6() {
+    let proof = "
+1 | P
+  |-
+2 | ¬¬P ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_7() {
+    let proof = "
+1 | Q
+  |-
+2 | ¬¬P ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_8() {
+    let proof = "
+1 | ¬P
+  |-
+2 | ¬¬P ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_9() {
+    let proof = "
+1 | ¬¬P
+  |-
+2 | ¬¬P ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_10() {
+    let proof = "
+1 | ¬¬P(a)
+  |-
+2 | ¬¬P(a) ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_11() {
+    let proof = "
+1 | ¬¬¬P(a)
+  |-
+2 | ¬¬P(a) ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_12() {
+    let proof = "
+1 | ¬¬¬¬P(a)
+  |-
+2 | ¬¬P(a) ¬Elim:1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_13() {
+    let proof = "
+1 | ¬¬¬¬¬P(a)
+  |-
+2 | ¬¬P(a) ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_14() {
+    let proof = "
+1 | ¬¬¬P(a)
+  |-
+2 | ¬P(a) ¬Elim:1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_15() {
+    let proof = "
+1 | ¬¬¬P(a)
+  |-
+2 | ¬P(b) ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_16() {
+    let proof = "
+1 | ¬¬¬P(a)
+  |-
+2 | ¬P(f(a)) ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_17() {
+    let proof = "
+1 | ¬¬¬P(f)
+  |-
+2 | ¬P(f(a)) ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_18() {
+    let proof = "
+1 | ¬¬¬P(f(a))
+  |-
+2 | ¬P(f(a)) ¬Elim:1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_19() {
+    let proof = "
+1 | ¬¬¬P(f(f(a)))
+  |-
+2 | ¬P(f(a)) ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_20() {
+    let proof = "
+1 | ¬¬¬P(f(f(a)))
+  |-
+2 | ¬P(f(f)) ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_21() {
+    let proof = "
+1 | ¬¬¬P(f(f(a)))
+  |-
+2 | ¬P(f(f(b))) ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_22() {
+    let proof = "
+1 | ¬¬¬P(f(f(a)))
+  |-
+2 | ¬P(f(f(f(a)))) ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_23() {
+    let proof = "
+1 | ¬¬¬P(f(f(a)))
+  |-
+2 | ¬P(f(f(f(a)))) ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_24() {
+    let proof = "
+1 | ¬¬¬P(f(f(f(a))))
+  |-
+2 | ¬P(f(f(f(a)))) ¬Elim:1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_25() {
+    let proof = "
+1 | ¬¬¬P(f(f(f(b))))
+  |-
+2 | ¬P(f(f(f(a)))) ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_26() {
+    let proof = "
+1 | ¬¬¬P(f(f(f())))
+  |-
+2 | ¬P(f(f(f(a)))) ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_not_elim_27() {
+    let proof = "
+1 | ¬¬¬P(f(g(f(a))))
+  |-
+2 | ¬P(f(f(f(a)))) ¬Elim:1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
