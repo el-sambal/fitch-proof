@@ -1067,6 +1067,9 @@ impl Proof {
                         };
                     }
                 }
+                if &**ref_wff == curr_wff {
+                    return Ok(());
+                }
                 Err(format!(
                     "Line {curr_line_num}: the rule ∀Elim:{n} is used, but there is no \
                     appropriate substitution between line {n} and line {curr_line_num}"
