@@ -2166,3 +2166,43 @@ fn test_not_elim_27() {
 ";
     assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
+#[test]
+fn test_forall_bottom_1() {
+    let proof = "
+1 | A ∧ ¬A
+  |----
+2 | A              ∧ Elim: 1
+3 | ¬A             ∧ Elim: 1
+4 | ⊥              ⊥ Intro: 2, 3
+5 | | [a]
+  | |----
+6 | | ⊥            Reit: 4
+7 | ∀x ⊥           ∀ Intro: 5-6
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_bottom_2() {
+    let proof = "
+1 | A ∧ ¬A
+  |----
+2 | A              ∧ Elim: 1
+3 | ¬A             ∧ Elim: 1
+4 | ⊥              ⊥ Intro: 2, 3
+5 | | [a]
+  | |----
+6 | | ⊥            Reit: 4
+7 | ∀x ⊥           ∀ Intro: 5-6
+8 | ⊥              ∀ Elim: 7
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_unused_variable_1() {
+    let proof = "
+1 | ∀x P
+  |----
+2 | P            ∀ Elim: 1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
