@@ -2406,3 +2406,57 @@ fn test_exists_intro_needs_exists() {
 ";
     assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
+#[test]
+fn test_complex_forall_elim_1(){
+    let proof = "
+1 | ∀x∀y P(x,x,y,y,a)
+  |----
+2 | ∀y P(a,a,y,y,a)            ∀ Elim: 1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_complex_forall_elim_2(){
+    let proof = "
+1 | ∀x∀y P(x,x,y,y,a)
+  |----
+2 | ∀y P(a,a,y,a,a)            ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_complex_forall_elim_3(){
+    let proof = "
+1 | ∀x∀y P(x,x,y,y,a)
+  |----
+2 | ∀y P(a,a,a,a,a)            ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_complex_forall_elim_4(){
+    let proof = "
+1 | ∀x∀y P(x,x,y,y,a)
+  |----
+2 | ∀y P(x,x,a,a,a)            ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_complex_forall_elim_5(){
+    let proof = "
+1 | ∀x∀y P(x,x,y,y,a)
+  |----
+2 | ∀x P(x,x,a,a,a)            ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_complex_forall_elim_6(){
+    let proof = "
+1 | ∀x∀y P(x,x,y,y,a)
+  |----
+2 | ∀y P(a,b,y,y,a)            ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
