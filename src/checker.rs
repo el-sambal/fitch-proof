@@ -741,7 +741,7 @@ impl Proof {
                 if disjs.len() != subproofs.len() {
                     return Err(format!(
                         "Line {curr_line_num}: the rule ∨Elim: {n}, ..... \
-                            is used, but the number of disjuncts ({})\
+                            is used, but the number of disjuncts ({}) \
                             of the sentence in line {n} is not equal to \
                             the number of referenced subproofs ({}).",
                         disjs.len(),
