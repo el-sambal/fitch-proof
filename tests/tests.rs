@@ -2460,3 +2460,138 @@ fn test_complex_forall_elim_6(){
 ";
     assert!(proof_is_not_correct_ultra_pedantic(proof));
 }
+#[test]
+fn test_exists_elim_1(){
+    let proof = "
+1 | ∃x ⊥
+  |----
+2 | | [a] ⊥
+  | |----
+3 | | ⊥             Reit: 2
+4 | ⊥               ∃ Elim: 1, 2-3
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_elim_2(){
+    let proof = "
+1 | ∃x P
+  |----
+2 | | [a] P
+  | |----
+3 | | P             Reit: 2
+4 | ⊥               ∃ Elim: 1, 2-3
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_elim_3(){
+    let proof = "
+1 | ∃x P
+  |----
+2 | | [a] P
+  | |----
+3 | | P             Reit: 2
+4 | P               ∃ Elim: 1, 2-3
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_elim_4(){
+    let proof = "
+1 | ∃x P(x)
+  |----
+2 | | [a] P(a)
+  | |----
+3 | | P(a)             Reit: 2
+4 | P(a)               ∃ Elim: 1, 2-3
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_elim_5(){
+    let proof = "
+1 | ∃x P(x)
+  |----
+2 | | [a] P(a)
+  | |----
+3 | | P(a)             Reit: 2
+4 | | ∃y P(y)          ∃ Intro: 3
+5 | ∃y P(y)            ∃ Elim: 1, 2-4
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_elim_6(){
+    let proof = "
+1 | ∃x P(x)
+  |----
+2 | | [b] P(a)
+  | |----
+3 | | P(a)             Reit: 2
+4 | | ∃y P(y)          ∃ Intro: 3
+5 | ∃y P(y)            ∃ Elim: 1, 2-4
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_elim_7(){
+    let proof = "
+1 | ∃x P(x)
+  |----
+2 | | [b] P(b)
+  | |----
+3 | | P(a)             Reit: 2
+4 | | ∃y P(y)          ∃ Intro: 3
+5 | ∃y P(y)            ∃ Elim: 1, 2-4
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_elim_8(){
+    let proof = "
+1 | ∃x ∃y P(x,x,y,y)
+  |----
+2 | | [a] ∃y P(a,a,y,y)
+  | |----
+3 | | | [b] P(a,a,b,b)
+  | | |----
+4 | | | ∃y P(y,y,b,b)            ∃ Intro: 3
+5 | | | ∃x ∃y P(y,y,x,x)         ∃ Intro: 4
+6 | | ∃x ∃y P(y,y,x,x)           ∃ Elim: 2, 3-5
+7 | ∃x ∃y P(y,y,x,x)             ∃ Elim: 1, 2-6
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_elim_9(){
+    let proof = "
+1 | ∃x ∃y P(x,x,y,y)
+  |----
+2 | | [a] ∃y P(a,a,a,a)
+  | |----
+3 | | | [b] P(a,a,a,a)
+  | | |----
+4 | | | ∃y P(y,y,a,a)            ∃ Intro: 3
+5 | | | ∃x ∃y P(y,y,x,x)         ∃ Intro: 4
+6 | | ∃x ∃y P(y,y,x,x)           ∃ Elim: 2, 3-5
+7 | ∃x ∃y P(y,y,x,x)             ∃ Elim: 1, 2-6
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_elim_10(){
+    let proof = "
+1 | ∃x ∃y P(x,x,y,y)
+  |----
+2 | | [d] ∃y P(a,a,y,y)
+  | |----
+3 | | | [b] P(a,a,b,b)
+  | | |----
+4 | | | ∃y P(y,y,b,b)            ∃ Intro: 3
+5 | | | ∃x ∃y P(y,y,x,x)         ∃ Intro: 4
+6 | | ∃x ∃y P(y,y,x,x)           ∃ Elim: 2, 3-5
+7 | ∃x ∃y P(y,y,x,x)             ∃ Elim: 1, 2-6
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
