@@ -2206,3 +2206,203 @@ fn test_forall_elim_unused_variable_1() {
 ";
     assert!(proof_is_correct_ultra_pedantic(proof));
 }
+#[test]
+fn test_forall_elim_unused_variable_2() {
+    let proof = "
+1 | ∀x P
+  |----
+2 | Q            ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_unused_variable_3() {
+    let proof = "
+1 | ∀x P(a)
+  |----
+2 | P(a)            ∀ Elim: 1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_unused_variable_4() {
+    let proof = "
+1 | ∀x P(x)
+  |----
+2 | P(a)            ∀ Elim: 1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_unused_variable_5() {
+    let proof = "
+1 | ∀x P(x)
+  |----
+2 | P(x)            ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_unused_variable_6() {
+    let proof = "
+1 | ∀x P(x)
+  |----
+2 | Q(a)            ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_complex_1() {
+    let proof = "
+1 | ∀x P(x,a,x,b,x,a,x)
+  |----
+2 | P(c,a,c,b,c,a,c)           ∀ Elim: 1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_complex_2() {
+    let proof = "
+1 | ∀x P(x,a,x,b,x,a,x)
+  |----
+2 | P(d,a,d,b,d,a,d)           ∀ Elim: 1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_complex_3() {
+    let proof = "
+1 | ∀x P(x,a,x,b,x,a,x)
+  |----
+2 | P(a,a,a,b,a,a,a)           ∀ Elim: 1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_complex_4() {
+    let proof = "
+1 | ∀x P(x,a,x,b,x,a,x)
+  |----
+2 | P(b,a,b,b,b,a,b)           ∀ Elim: 1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_complex_5() {
+    let proof = "
+1 | ∀x P(x,a,x,b,x,a,x)
+  |----
+2 | P(f,a,f,b,f,a,f)           ∀ Elim: 1
+";
+    // fine: f is normally a function name, but in this case there is no function called f in the
+    // same proof, so this is OK.
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_complex_6() {
+    let proof = "
+1 | ∀x P(x,a,x,b,x,a,x)
+  |----
+2 | P(a,a,b,b,b,a,b)           ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_complex_7() {
+    let proof = "
+1 | ∀x P(x,a,x,b,x,a,x)
+  |----
+2 | P(a,a,a,b,b,a,b)           ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_complex_8a() {
+    let proof = "
+1 | ∀x P(x,a,x,b,x,a,x)
+  |----
+2 | P(a,a,a,b,a,a,b)           ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_complex_8b() {
+    let proof = "
+1 | ∀x P(x,a,x,b,x,a,x)
+  |----
+2 | P(a,a,a,a,a,a,a)           ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_complex_9() {
+    let proof = "
+1 | ∀x P(x,a,x,b,x,a,x)
+  |----
+2 | P(x,a,x,b,x,a,x)           ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_complex_10() {
+    let proof = "
+1 | ∀x P(x,a,x,b,x,a,x)
+  |----
+2 | P(x,a,x,b,x,b,x)           ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_complex_11() {
+    let proof = "
+1 | ∀x P(x,a,x,b,x,a,x)
+  |----
+2 | P(b,a,b,b,b,b,b)           ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_complex_12() {
+    let proof = "
+1 | ∀x P(x,a,x,b,x,a,x)
+  |----
+2 | P(a,a,b,b,c,a,d)           ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_unused_variable_1() {
+    let proof = "
+1 | P
+  |----
+2 | ∃x P         ∃ Intro: 1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_bottom() {
+    let proof = "
+1 | ⊥
+  |----
+2 | ∃x ⊥         ∃ Intro: 1
+";
+    assert!(proof_is_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_forall_elim_needs_forall() {
+    let proof = "
+1 | ⊥
+  |----
+2 | ⊥            ∀ Elim: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
+#[test]
+fn test_exists_intro_needs_exists() {
+    let proof = "
+1 | ⊥
+  |----
+2 | ⊥            ∃ Intro: 1
+";
+    assert!(proof_is_not_correct_ultra_pedantic(proof));
+}
