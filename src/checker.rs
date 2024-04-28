@@ -1355,13 +1355,16 @@ fn wffs_are_syntactically_equal_except_possibly_the_terms(wff1: &Wff, wff2: &Wff
     }
 }
 
+// This is a macro to duplicate the same code for both mutable and immutable references...
+// It's really cursed, but I saw no better way, other than having duplicate code, since Rust doesn't
+// have an inbuilt way of parametrizing over mutability (yet?).
 macro_rules! terms_from_wff_macro {
-    ($func_name:ident, $( $mut_:tt )*) => {
+    ($func_name:ident, $($mut_:tt)?) => {
         /// Generates a vector of (((mutable))) references to the [Term]s that are present in a certain [Wff], in a
         /// deterministic order. For recursive terms, such as f(f(f(x))), only the topmost [Term] is
         /// included in the output vector (but this [Term] still recursively contains the sub[Term]s).
-        fn $func_name(wff: & $($mut_)* Wff) -> Vec<& $($mut_)* Term> {
-            fn helper<'a>(wff: &'a $($mut_)* Wff, ts: &mut Vec<&'a $($mut_)* Term>) {
+        fn $func_name(wff: & $($mut_)? Wff) -> Vec<& $($mut_)? Term> {
+            fn helper<'a>(wff: &'a $($mut_)? Wff, ts: &mut Vec<&'a $($mut_)? Term>) {
                 match wff {
                     Wff::Bottom => {}
                     Wff::Equals(t1, t2) => {
@@ -1387,7 +1390,7 @@ macro_rules! terms_from_wff_macro {
                     Wff::Not(w) => helper(w, ts),
                 }
             }
-            let mut terms: Vec<& $($mut_)* Term> = vec![];
+            let mut terms: Vec<& $($mut_)? Term> = vec![];
             helper(wff, &mut terms);
             terms
         }
