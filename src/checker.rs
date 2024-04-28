@@ -1229,7 +1229,7 @@ fn substitution_applied_wff_one_or_more_times(a: &Wff, b: &Wff, subst: (&Term, &
         || (a == b && subst.0 == subst.1 && wff_contains_term(a, subst.0))
 }
 
-// returns `true` iff [Term] `a` contains [Term] `b` at least once (or `a` and `b` are syntactically equal)
+/// Returns `true` iff [Term] `a` contains [Term] `b` at least once (or `a` and `b` are syntactically equal)
 fn term_contains_term(a: &Term, b: &Term) -> bool {
     match &a {
         Term::Atomic(_) => a == b,
@@ -1381,9 +1381,7 @@ fn terms_from_wff(wff: &Wff) -> Vec<&Term> {
                 }
             }
             Wff::Atomic(_) => {}
-            Wff::Forall(_, w) | Wff::Exists(_, w) => {
-                helper(w, ts);
-            }
+            Wff::Forall(_, w) | Wff::Exists(_, w) => helper(w, ts),
             Wff::Not(w) => helper(w, ts),
         }
     }
