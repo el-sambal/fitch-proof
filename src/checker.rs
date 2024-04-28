@@ -1355,74 +1355,43 @@ fn wffs_are_syntactically_equal_except_possibly_the_terms(wff1: &Wff, wff2: &Wff
     }
 }
 
-/// Generates a vector of references to the [Term]s that are present in a certain [Wff], in a
-/// deterministic order. For recursive terms, such as f(f(f(x))), only the topmost [Term] is
-/// included in the output vector (but this [Term] still recursively contains the sub[Term]s).
-fn terms_from_wff(wff: &Wff) -> Vec<&Term> {
-    fn helper<'a>(wff: &'a Wff, ts: &mut Vec<&'a Term>) {
-        match wff {
-            Wff::Bottom => {}
-            Wff::Equals(t1, t2) => {
-                ts.push(t1);
-                ts.push(t2);
-            }
-            Wff::And(li) | Wff::Or(li) => {
-                for w in li {
-                    helper(w, ts);
+macro_rules! terms_from_wff_macro {
+    ($func_name:ident, $( $mut_:tt )*) => {
+        /// Generates a vector of (((mutable))) references to the [Term]s that are present in a certain [Wff], in a
+        /// deterministic order. For recursive terms, such as f(f(f(x))), only the topmost [Term] is
+        /// included in the output vector (but this [Term] still recursively contains the sub[Term]s).
+        fn $func_name(wff: & $($mut_)* Wff) -> Vec<& $($mut_)* Term> {
+            fn helper<'a>(wff: &'a $($mut_)* Wff, ts: &mut Vec<&'a $($mut_)* Term>) {
+                match wff {
+                    Wff::Bottom => {}
+                    Wff::Equals(t1, t2) => {
+                        ts.push(t1);
+                        ts.push(t2);
+                    }
+                    Wff::And(li) | Wff::Or(li) => {
+                        for w in li {
+                            helper(w, ts);
+                        }
+                    }
+                    Wff::Implies(t1, t2) | Wff::Bicond(t1, t2) => {
+                        helper(t1, ts);
+                        helper(t2, ts);
+                    }
+                    Wff::PredApp(_, args) => {
+                        for a in args {
+                            ts.push(a);
+                        }
+                    }
+                    Wff::Atomic(_) => {}
+                    Wff::Forall(_, w) | Wff::Exists(_, w) => helper(w, ts),
+                    Wff::Not(w) => helper(w, ts),
                 }
             }
-            Wff::Implies(t1, t2) | Wff::Bicond(t1, t2) => {
-                helper(t1, ts);
-                helper(t2, ts);
-            }
-            Wff::PredApp(_, args) => {
-                for a in args {
-                    ts.push(a);
-                }
-            }
-            Wff::Atomic(_) => {}
-            Wff::Forall(_, w) | Wff::Exists(_, w) => helper(w, ts),
-            Wff::Not(w) => helper(w, ts),
+            let mut terms: Vec<& $($mut_)* Term> = vec![];
+            helper(wff, &mut terms);
+            terms
         }
     }
-    let mut terms: Vec<&Term> = vec![];
-    helper(wff, &mut terms);
-    terms
 }
-
-/// Generates a vector of mutable references to the [Term]s that are present in a certain [Wff], in a
-/// deterministic order. For recursive terms, such as f(f(f(x))), only the topmost [Term] is
-/// included in the output vector (but this [Term] still recursively contains the sub[Term]s).
-fn terms_from_wff_mut(wff: &mut Wff) -> Vec<&mut Term> {
-    fn helper<'a>(wff: &'a mut Wff, ts: &mut Vec<&'a mut Term>) {
-        match wff {
-            Wff::Bottom => {}
-            Wff::Equals(t1, t2) => {
-                ts.push(t1);
-                ts.push(t2);
-            }
-            Wff::And(li) | Wff::Or(li) => {
-                for w in li {
-                    helper(w, ts);
-                }
-            }
-            Wff::Implies(t1, t2) | Wff::Bicond(t1, t2) => {
-                helper(t1, ts);
-                helper(t2, ts);
-            }
-            Wff::PredApp(_, args) => {
-                for a in args {
-                    ts.push(a);
-                }
-            }
-            Wff::Atomic(_) => {}
-            Wff::Forall(_, w) | Wff::Exists(_, w) => {
-                helper(w, ts);
-            }
-            Wff::Not(w) => helper(w, ts),
-        }
-    }
-    let mut terms: Vec<&mut Term> = vec![];
-    helper(wff, &mut terms);
-    terms
-}
+terms_from_wff_macro!(terms_from_wff,);
+terms_from_wff_macro!(terms_from_wff_mut, mut);
