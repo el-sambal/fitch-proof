@@ -1250,7 +1250,8 @@ fn wff_contains_term(wff: &Wff, t: &Term) -> bool {
     terms_from_wff(wff).iter().any(|t_| term_contains_term(t_, t))
 }
 
-/// This function applies a substitution everywhere and returns the resulting [Wff].
+/// This function returns the [Wff] which would result from applying a trivial substitution everywhere in given [Wff].
+/// The inputted [Wff] is not changed.
 /// Note that this substitution must be trivial: that is, the substitution
 /// must be of the form term1 -> term2 where term1 is an atomic term,
 /// i.e. a constant or variable, so not a function application.
@@ -1260,7 +1261,7 @@ fn apply_trivial_substitution_everywhere_to_wff(wff: &Wff, subst: (&Term, &Term)
         Term::Atomic(_) => {}
     }
 
-    // applies a substitution everywhere and returns the resulting term.
+    // applies a trivial substitution everywhere and returns the resulting term.
     // Note that this substitution must be trivial: that is, the substitution
     // must be of the form term1 -> term2 where term1 is an atomic term,
     // i.e. a constant or variable, so not a function application.
@@ -1374,11 +1375,7 @@ macro_rules! terms_from_wff_macro {
         fn $func_name(wff: & $($mut_)? Wff) -> Vec<& $($mut_)? Term> {
             fn helper<'a>(wff: &'a $($mut_)? Wff, ts: &mut Vec<&'a $($mut_)? Term>) {
                 match wff {
-                    Wff::Bottom => {}
-                    Wff::Equals(t1, t2) => {
-                        ts.push(t1);
-                        ts.push(t2);
-                    }
+                    Wff::Equals(t1, t2) => ts.extend([t1, t2]),
                     Wff::And(li) | Wff::Or(li) => {
                         for w in li {
                             helper(w, ts);
@@ -1388,14 +1385,10 @@ macro_rules! terms_from_wff_macro {
                         helper(t1, ts);
                         helper(t2, ts);
                     }
-                    Wff::PredApp(_, args) => {
-                        for a in args {
-                            ts.push(a);
-                        }
-                    }
-                    Wff::Atomic(_) => {}
+                    Wff::PredApp(_, args) => ts.extend(args),
                     Wff::Forall(_, w) | Wff::Exists(_, w) => helper(w, ts),
                     Wff::Not(w) => helper(w, ts),
+                    Wff::Bottom | Wff::Atomic(_) => {}
                 }
             }
             let mut terms: Vec<& $($mut_)? Term> = vec![];
