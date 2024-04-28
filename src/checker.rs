@@ -1247,7 +1247,7 @@ fn term_contains_term(t1: &Term, t2: &Term) -> bool {
 
 // returns `true` iff [Wff] `wff` contains [Term] `t` at least once
 fn wff_contains_term(wff: &Wff, t: &Term) -> bool {
-    terms_from_wff(wff).iter().any(|t| term_contains_term(t, t))
+    terms_from_wff(wff).iter().any(|t_| term_contains_term(t_, t))
 }
 
 /// This function applies a substitution everywhere and returns the resulting [Wff].
