@@ -1189,12 +1189,16 @@ impl Proof {
     }
 }
 
-/// This function returns `true` iff [Term] `b` can be obtained from [Term] `a` by applying
+/// This function returns `true` iff [Term] `t2` can be obtained from [Term] `t1` by applying
 /// the substitution `subst` *zero or more* times.
-fn substitution_applied_term_zero_or_more_times(a: &Term, b: &Term, subst: (&Term, &Term)) -> bool {
-    subst == (a, b)
-        || a == b
-        || match (&a, &b) {
+fn substitution_applied_term_zero_or_more_times(
+    t1: &Term,
+    t2: &Term,
+    subst: (&Term, &Term),
+) -> bool {
+    subst == (t1, t2)
+        || t1 == t2
+        || match (&t1, &t2) {
             (Term::FuncApp(f1_name, args1), Term::FuncApp(f2_name, args2)) => {
                 f1_name == f2_name
                     && args1.len() == args2.len()
@@ -1222,24 +1226,28 @@ fn substitution_applied_wff_zero_or_more_times(
             .all(|(t1, t2)| substitution_applied_term_zero_or_more_times(t1, t2, subst))
 }
 
-/// This function returns `true` iff [Wff] `b` can be obtained from [Wff] `a` by applying
+/// This function returns `true` iff [Wff] `wff2` can be obtained from [Wff] `wff1` by applying
 /// the substitution `subst` *one or more* times.
-fn substitution_applied_wff_one_or_more_times(a: &Wff, b: &Wff, subst: (&Term, &Term)) -> bool {
-    (a != b && substitution_applied_wff_zero_or_more_times(a, b, subst))
-        || (a == b && subst.0 == subst.1 && wff_contains_term(a, subst.0))
+fn substitution_applied_wff_one_or_more_times(
+    wff1: &Wff,
+    wff2: &Wff,
+    subst: (&Term, &Term),
+) -> bool {
+    (wff1 != wff2 && substitution_applied_wff_zero_or_more_times(wff1, wff2, subst))
+        || (wff1 == wff2 && subst.0 == subst.1 && wff_contains_term(wff1, subst.0))
 }
 
-/// Returns `true` iff [Term] `a` contains [Term] `b` at least once (or `a` and `b` are syntactically equal)
-fn term_contains_term(a: &Term, b: &Term) -> bool {
-    match &a {
-        Term::Atomic(_) => a == b,
-        Term::FuncApp(_, args) => a == b || args.iter().any(|arg| term_contains_term(arg, b)),
+/// Returns `true` iff [Term] `t1` contains [Term] `t2` at least once (or `t1` and `t2` are syntactically equal)
+fn term_contains_term(t1: &Term, t2: &Term) -> bool {
+    match &t1 {
+        Term::Atomic(_) => t1 == t2,
+        Term::FuncApp(_, args) => t1 == t2 || args.iter().any(|arg| term_contains_term(arg, t2)),
     }
 }
 
-// returns `true` iff [Wff] `a` contains [Term] `b` at least once
-fn wff_contains_term(a: &Wff, b: &Term) -> bool {
-    terms_from_wff(a).iter().any(|t| term_contains_term(t, b))
+// returns `true` iff [Wff] `wff` contains [Term] `t` at least once
+fn wff_contains_term(wff: &Wff, t: &Term) -> bool {
+    terms_from_wff(wff).iter().any(|t| term_contains_term(t, t))
 }
 
 /// This function applies a substitution everywhere and returns the resulting [Wff].
