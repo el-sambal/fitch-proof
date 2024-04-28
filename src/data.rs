@@ -63,7 +63,7 @@ pub enum Term {
     FuncApp(String, Vec<Term>),
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 /// A logical sentence. "Wff" stands for "well-formed formula", but this is a slightly incorrect
 /// name, since for example, a logical sentence that has predicate ariy mismatches is still
 /// expressable in this [Wff]. A [Wff] is a core element of a proof. For example, each proof line

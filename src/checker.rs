@@ -1207,53 +1207,19 @@ fn substitution_applied_term_zero_or_more_times(a: &Term, b: &Term, subst: (&Ter
         }
 }
 
-/// This function returns `true` iff [Wff] `b` can be obtained from [Wff] `a` by applying
+/// This function returns `true` iff [Wff] `wff2` can be obtained from [Wff] `wff1` by applying
 /// the substitution `subst` *zero or more* times.
-fn substitution_applied_wff_zero_or_more_times(a: &Wff, b: &Wff, subst: (&Term, &Term)) -> bool {
-    match (&a, &b) {
-        (Wff::And(li1), Wff::And(li2)) | (Wff::Or(li1), Wff::Or(li2)) => {
-            li1.len() == li2.len()
-                && zip(li1, li2)
-                    .all(|(w1, w2)| substitution_applied_wff_zero_or_more_times(w1, w2, subst))
-        }
-        (Wff::And(_) | Wff::Or(_), _) => false,
-
-        (Wff::Bicond(w11, w12), Wff::Bicond(w21, w22))
-        | (Wff::Implies(w11, w12), Wff::Implies(w21, w22)) => {
-            substitution_applied_wff_zero_or_more_times(w11, w21, subst)
-                && substitution_applied_wff_zero_or_more_times(w12, w22, subst)
-        }
-        (Wff::Bicond(..) | Wff::Implies(..), _) => false,
-
-        (Wff::Not(w1), Wff::Not(w2)) => substitution_applied_wff_zero_or_more_times(w1, w2, subst),
-        (Wff::Not(..), _) => false,
-
-        (Wff::Bottom, Wff::Bottom) => true,
-        (Wff::Bottom, _) => false,
-
-        (Wff::Equals(t11, t12), Wff::Equals(t21, t22)) => {
-            substitution_applied_term_zero_or_more_times(t11, t21, subst)
-                && substitution_applied_term_zero_or_more_times(t12, t22, subst)
-        }
-        (Wff::Equals(..), _) => false,
-
-        (Wff::Atomic(_), Wff::Atomic(_)) => a == b,
-        (Wff::Atomic(_), _) => false,
-
-        (Wff::PredApp(p1, args1), Wff::PredApp(p2, args2)) => {
-            p1 == p2
-                && args1.len() == args2.len()
-                && zip(args1, args2)
-                    .all(|(t1, t2)| substitution_applied_term_zero_or_more_times(t1, t2, subst))
-        }
-        (Wff::PredApp(..), _) => false,
-
-        (Wff::Forall(var1, wff1), Wff::Forall(var2, wff2))
-        | (Wff::Exists(var1, wff1), Wff::Exists(var2, wff2)) => {
-            var1 == var2 && substitution_applied_wff_zero_or_more_times(wff1, wff2, subst)
-        }
-        (Wff::Forall(..) | Wff::Exists(..), _) => false,
-    }
+fn substitution_applied_wff_zero_or_more_times(
+    wff1: &Wff,
+    wff2: &Wff,
+    subst: (&Term, &Term),
+) -> bool {
+    let terms1 = terms_from_wff(wff1);
+    let terms2 = terms_from_wff(wff2);
+    wffs_are_syntactically_equal_except_possibly_the_terms(wff1, wff2)
+        && terms1.len() == terms2.len()
+        && zip(terms1, terms2)
+            .all(|(t1, t2)| substitution_applied_term_zero_or_more_times(t1, t2, subst))
 }
 
 /// This function returns `true` iff [Wff] `b` can be obtained from [Wff] `a` by applying
@@ -1273,17 +1239,7 @@ fn term_contains_term(a: &Term, b: &Term) -> bool {
 
 // returns `true` iff [Wff] `a` contains [Term] `b` at least once
 fn wff_contains_term(a: &Wff, b: &Term) -> bool {
-    match &a {
-        Wff::Bottom | Wff::Atomic(_) => false,
-        Wff::Or(li) | Wff::And(li) => li.iter().any(|l| wff_contains_term(l, b)),
-        Wff::Not(w) => wff_contains_term(w, b),
-        Wff::Implies(w1, w2) | Wff::Bicond(w1, w2) => {
-            wff_contains_term(w1, b) || wff_contains_term(w2, b)
-        }
-        Wff::Equals(t1, t2) => term_contains_term(t1, b) || term_contains_term(t2, b),
-        Wff::Forall(_, w) | Wff::Exists(_, w) => wff_contains_term(w, b),
-        Wff::PredApp(_, args) => args.iter().any(|arg| term_contains_term(arg, b)),
-    }
+    terms_from_wff(a).iter().any(|t| term_contains_term(t, b))
 }
 
 /// This function applies a substitution everywhere and returns the resulting [Wff].
@@ -1318,41 +1274,11 @@ fn apply_trivial_substitution_everywhere_to_wff(wff: &Wff, subst: (&Term, &Term)
         }
     }
 
-    match wff {
-        Wff::And(li) => Wff::And(
-            li.iter().map(|x| apply_trivial_substitution_everywhere_to_wff(x, subst)).collect(),
-        ),
-        Wff::Or(li) => Wff::Or(
-            li.iter().map(|x| apply_trivial_substitution_everywhere_to_wff(x, subst)).collect(),
-        ),
-        Wff::Implies(w1, w2) => Wff::Implies(
-            Box::new(apply_trivial_substitution_everywhere_to_wff(w1, subst)),
-            Box::new(apply_trivial_substitution_everywhere_to_wff(w2, subst)),
-        ),
-        Wff::Bicond(w1, w2) => Wff::Bicond(
-            Box::new(apply_trivial_substitution_everywhere_to_wff(w1, subst)),
-            Box::new(apply_trivial_substitution_everywhere_to_wff(w2, subst)),
-        ),
-        Wff::Not(w1) => Wff::Not(Box::new(apply_trivial_substitution_everywhere_to_wff(w1, subst))),
-        Wff::Bottom => Wff::Bottom,
-        Wff::Forall(s, w) => Wff::Forall(
-            s.to_string(),
-            Box::new(apply_trivial_substitution_everywhere_to_wff(w, subst)),
-        ),
-        Wff::Exists(s, w) => Wff::Exists(
-            s.to_string(),
-            Box::new(apply_trivial_substitution_everywhere_to_wff(w, subst)),
-        ),
-        Wff::Equals(t1, t2) => Wff::Equals(
-            apply_trivial_substitution_everywhere_to_term(t1, subst),
-            apply_trivial_substitution_everywhere_to_term(t2, subst),
-        ),
-        Wff::PredApp(p, li) => Wff::PredApp(
-            p.to_string(),
-            li.iter().map(|x| apply_trivial_substitution_everywhere_to_term(x, subst)).collect(),
-        ),
-        Wff::Atomic(p) => Wff::Atomic(p.to_string()),
-    }
+    let mut new_wff = wff.clone();
+    terms_from_wff_mut(&mut new_wff)
+        .iter_mut()
+        .for_each(|term| **term = apply_trivial_substitution_everywhere_to_term(term, subst));
+    new_wff
 }
 
 /// Given two [Wff]s, `wff1` and `wff2`, this function tries to determine if there exists a *trivial*
@@ -1376,51 +1302,129 @@ fn find_possible_trivial_substitution_wff(wff1: &Wff, wff2: &Wff) -> Option<(Ter
             None
         }
     }
-    match (wff1, wff2) {
-        (Wff::And(li1), Wff::And(li2)) => {
-            zip(li1, li2).find_map(|(w1, w2)| find_possible_trivial_substitution_wff(w1, w2))
-        }
-        (Wff::And(_), _) => None,
+    let terms1 = terms_from_wff(wff1);
+    let terms2 = terms_from_wff(wff2);
+    zip(terms1, terms2).find_map(|(t1, t2)| find_possible_trivial_substitution_term(t1, t2))
+}
 
-        (Wff::Or(li1), Wff::Or(li2)) => {
-            zip(li1, li2).find_map(|(w1, w2)| find_possible_trivial_substitution_wff(w1, w2))
-        }
-        (Wff::Or(_), _) => None,
-
-        (Wff::Implies(a1, c1), Wff::Implies(a2, c2)) => {
-            find_possible_trivial_substitution_wff(a1, a2)
-                .or(find_possible_trivial_substitution_wff(c1, c2))
-        }
-        (Wff::Implies(..), _) => None,
-
-        (Wff::Bicond(w11, w12), Wff::Bicond(w21, w22)) => {
-            find_possible_trivial_substitution_wff(w11, w21)
-                .or(find_possible_trivial_substitution_wff(w12, w22))
-        }
-        (Wff::Bicond(..), _) => None,
-
-        (Wff::Not(w1), Wff::Not(w2)) => find_possible_trivial_substitution_wff(w1, w2),
-        (Wff::Not(..), _) => None,
-
-        (Wff::Forall(_, w1), Wff::Forall(_, w2)) => find_possible_trivial_substitution_wff(w1, w2),
-        (Wff::Forall(..), _) => None,
-
-        (Wff::Exists(_, w1), Wff::Exists(_, w2)) => find_possible_trivial_substitution_wff(w1, w2),
-        (Wff::Exists(..), _) => None,
-
-        (Wff::Atomic(_), _) => None,
-
-        (Wff::PredApp(_, args1), Wff::PredApp(_, args2)) => {
-            zip(args1, args2).find_map(|(a1, a2)| find_possible_trivial_substitution_term(a1, a2))
-        }
-        (Wff::PredApp(..), _) => None,
-
-        (Wff::Equals(t11, t12), Wff::Equals(t21, t22)) => {
-            find_possible_trivial_substitution_term(t11, t21)
-                .or(find_possible_trivial_substitution_term(t12, t22))
-        }
-        (Wff::Equals(..), _) => None,
-
-        (Wff::Bottom, _) => None,
+/// Consider the abstract syntax trees of two well-formed formulas `wff1` and `wff2`. Now remove
+/// from that tree all the nodes which are a [Term]. This function returns `true` if the syntax
+/// trees are then equal (in which case we call the original wffs s-equivalent), `false` otherwise.
+///
+/// Notice that in a universal or existential
+/// quantification, the variable that is being quantified over, still needs to be the same. That
+/// is, this function will say that ∀x(P∨Q) and ∀y(P∨Q) are *not* s-equivalent,
+/// because "x" is not "y".
+///
+/// Notice that this function still considers the number of arguments to a predicate. For example,
+/// P(a,b,f(a)) and P(d,e,f(a,b,c,d)) are s-equivalent, but P(a,b,c) and P(a,b) are *not* s-equivalent.
+fn wffs_are_syntactically_equal_except_possibly_the_terms(wff1: &Wff, wff2: &Wff) -> bool {
+    fn s_eq(wff1: &Wff, wff2: &Wff) -> bool {
+        // just a shorthand
+        wffs_are_syntactically_equal_except_possibly_the_terms(wff1, wff2)
     }
+    match (wff1, wff2) {
+        (Wff::Bottom, Wff::Bottom) => true,
+        (Wff::Bottom, _) => false,
+
+        (Wff::Or(li1), Wff::Or(li2)) | (Wff::And(li1), Wff::And(li2)) => {
+            li1.len() == li2.len() && zip(li1, li2).all(|(w1, w2)| s_eq(w1, w2))
+        }
+        (Wff::Or(..) | Wff::And(..), _) => false,
+
+        (Wff::Implies(w11, w12), Wff::Implies(w21, w22))
+        | (Wff::Bicond(w11, w12), Wff::Bicond(w21, w22)) => s_eq(w11, w21) && s_eq(w12, w22),
+        (Wff::Implies(..) | Wff::Bicond(..), _) => false,
+
+        (Wff::Not(w1), Wff::Not(w2)) => s_eq(w1, w2),
+        (Wff::Not(..), _) => false,
+
+        (Wff::Forall(x1, w1), Wff::Forall(x2, w2)) | (Wff::Exists(x1, w1), Wff::Exists(x2, w2)) => {
+            x1 == x2 && s_eq(w1, w2)
+        }
+        (Wff::Forall(..) | Wff::Exists(..), _) => false,
+
+        (Wff::Atomic(p), Wff::Atomic(q)) => p == q,
+        (Wff::Atomic(..), _) => false,
+
+        (Wff::PredApp(p, args1), Wff::PredApp(q, args2)) => p == q && args1.len() == args2.len(),
+        (Wff::PredApp(..), _) => false,
+
+        (Wff::Equals(..), Wff::Equals(..)) => true,
+        (Wff::Equals(..), _) => false,
+    }
+}
+
+/// Generates a vector of references to the [Term]s that are present in a certain [Wff], in a
+/// deterministic order. For recursive terms, such as f(f(f(x))), only the topmost [Term] is
+/// included in the output vector (but this [Term] still recursively contains the sub[Term]s).
+fn terms_from_wff(wff: &Wff) -> Vec<&Term> {
+    fn helper<'a>(wff: &'a Wff, ts: &mut Vec<&'a Term>) {
+        match wff {
+            Wff::Bottom => {}
+            Wff::Equals(t1, t2) => {
+                ts.push(t1);
+                ts.push(t2);
+            }
+            Wff::And(li) | Wff::Or(li) => {
+                for w in li {
+                    helper(w, ts);
+                }
+            }
+            Wff::Implies(t1, t2) | Wff::Bicond(t1, t2) => {
+                helper(t1, ts);
+                helper(t2, ts);
+            }
+            Wff::PredApp(_, args) => {
+                for a in args {
+                    ts.push(a);
+                }
+            }
+            Wff::Atomic(_) => {}
+            Wff::Forall(_, w) | Wff::Exists(_, w) => {
+                helper(w, ts);
+            }
+            Wff::Not(w) => helper(w, ts),
+        }
+    }
+    let mut terms: Vec<&Term> = vec![];
+    helper(wff, &mut terms);
+    terms
+}
+
+/// Generates a vector of mutable references to the [Term]s that are present in a certain [Wff], in a
+/// deterministic order. For recursive terms, such as f(f(f(x))), only the topmost [Term] is
+/// included in the output vector (but this [Term] still recursively contains the sub[Term]s).
+fn terms_from_wff_mut(wff: &mut Wff) -> Vec<&mut Term> {
+    fn helper<'a>(wff: &'a mut Wff, ts: &mut Vec<&'a mut Term>) {
+        match wff {
+            Wff::Bottom => {}
+            Wff::Equals(t1, t2) => {
+                ts.push(t1);
+                ts.push(t2);
+            }
+            Wff::And(li) | Wff::Or(li) => {
+                for w in li {
+                    helper(w, ts);
+                }
+            }
+            Wff::Implies(t1, t2) | Wff::Bicond(t1, t2) => {
+                helper(t1, ts);
+                helper(t2, ts);
+            }
+            Wff::PredApp(_, args) => {
+                for a in args {
+                    ts.push(a);
+                }
+            }
+            Wff::Atomic(_) => {}
+            Wff::Forall(_, w) | Wff::Exists(_, w) => {
+                helper(w, ts);
+            }
+            Wff::Not(w) => helper(w, ts),
+        }
+    }
+    let mut terms: Vec<&mut Term> = vec![];
+    helper(wff, &mut terms);
+    terms
 }
