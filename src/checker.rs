@@ -1135,7 +1135,7 @@ impl Proof {
                 }
                 if apply_trivial_substitution_everywhere_to_wff(
                     exists_ref_wff,
-                    (&Term::Atomic(var.to_string()), &bc_term),
+                    (&Term::Atomic(var.to_string()), bc_term),
                 ) == *s_begin.sentence.as_ref().unwrap()
                 {
                     if s_end.sentence.as_ref().unwrap() == curr_wff {
@@ -1159,7 +1159,7 @@ impl Proof {
                         formatter::format_wff(ref_wff),
                         formatter::format_wff(&apply_trivial_substitution_everywhere_to_wff(
                             exists_ref_wff,
-                            (&Term::Atomic(var.to_string()), &bc_term)
+                            (&Term::Atomic(var.to_string()), bc_term)
                         )),
                         formatter::format_wff(s_begin.sentence.as_ref().unwrap())
                     ))
