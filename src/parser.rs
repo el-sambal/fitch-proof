@@ -156,7 +156,7 @@ fn lex(input: &str) -> Result<Vec<Token>, String> {
             '⊥' => toks.push(Token::Bottom),
             _ => {
                 let mut err: String = "invalid character found: ".to_owned();
-                err.push_str(&ch.to_string());
+                err.push(ch);
                 return Err(err);
             }
         }
