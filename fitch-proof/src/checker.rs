@@ -35,7 +35,6 @@ impl Proof {
         // check that user applied proof rule correctly everywhere
         for line in &self.lines {
             if let Err(err) = self.check_line(line) {
-                println!("{err}");
                 errors.push(err.to_string());
             }
         }
@@ -455,7 +454,6 @@ impl Proof {
         let mut errors: Vec<String> = vec![];
         let mut arity_map: HashMap<String, Vec<usize>> = HashMap::from([]);
         for (name, arity) in self.get_arity_set() {
-            println!("{name}:{arity}");
             if !arity_map.contains_key(&name) {
                 arity_map.insert(name.to_string(), vec![]);
             }
