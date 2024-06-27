@@ -34,6 +34,29 @@ pub fn check_proof(proof: &str, allowed_variable_names: &str) -> String {
     }
 }
 
+/// Checks if a string is a fully correct proof that matches a given proof template.
+///
+/// If the string corresponds to a fully correct proof, then a string will be returned,
+/// saying that the proof is correct.
+///
+/// If the proof is not correct, or does not match the template,
+/// then a string is returned which contains a nice error message.
+///
+/// This function never panics.
+#[wasm_bindgen]
+pub fn check_proof_with_template(
+    proof: &str,
+    template: Vec<String>,
+    allowed_variable_names: &str,
+) -> String {
+    let res = check_proof_to_proofresult(proof, allowed_variable_names);
+    match res {
+        ProofResult::Correct => "The proof is correct!".to_string(),
+        ProofResult::Error(errs) => errs.join("\n\n"),
+        ProofResult::FatalError(err) => format!("Fatal error: {err}"),
+    }
+}
+
 /// Checks if a string is a fully correct proof.
 ///
 /// This function returns its evaluation of the proof in a [ProofResult].
@@ -47,6 +70,27 @@ fn check_proof_to_proofresult(proof: &str, allowed_variable_names: &str) -> Proo
         parser::parse_allowed_variable_names(allowed_variable_names),
     ) {
         (Ok(proof_lines), Ok(variable_names)) => checker::check_proof(proof_lines, variable_names),
+        (Err(err), _) | (_, Err(err)) => ProofResult::FatalError(err),
+    }
+}
+
+/// Checks if a string is a fully correct proof that matches a given proof template.
+///
+/// This function returns its evaluation of the proof in a [ProofResult].
+///
+/// See also [parser::parse_fitch_proof] and [checker::check_proof].
+///
+/// This function never panics.
+fn check_proof_to_proofresult_with_template(
+    proof: &str,
+    template: &[String],
+    allowed_variable_names: &str,
+) -> ProofResult {
+    match (
+        parser::parse_fitch_proof(proof),
+        parser::parse_allowed_variable_names(allowed_variable_names),
+    ) {
+        (Ok(proof_lines), Ok(variable_names)) => checker::check_proof_with_template(proof_lines, ,variable_names),
         (Err(err), _) | (_, Err(err)) => ProofResult::FatalError(err),
     }
 }

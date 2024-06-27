@@ -61,9 +61,10 @@ fn main() {
     let Ok(proof) = std::fs::read_to_string(proof_filename) else {
         fail_open_file(proof_filename)
     };
-    let Ok(templates) = std::fs::read_to_string(template_filename) else {
+    let Ok(template) = std::fs::read_to_string(template_filename) else {
         fail_open_file(template_filename)
     };
+    let template: Vec<String> = template.lines().map(|s| s.trim().to_string()).collect();
     let variables = if args.len() == 3 {
         DEFAULT_ALLOWED_VARIABLE_NAMES.to_string()
     } else {

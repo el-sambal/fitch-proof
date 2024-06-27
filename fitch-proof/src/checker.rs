@@ -23,9 +23,106 @@ pub fn check_proof(
     }
 }
 
+/// This function checks whether a proof is fully correct, AND that it matches a given proof
+/// template. It takes in a vector of [ProofLine]s,
+/// which can come straight from the parser (i.e. there are no preconditions about well-formedness
+/// of this vector).
+///
+/// The second argument is a vector of [Wff]s. These are the proof template that should be matched
+/// against. These [Wff]s are, in order, the premises, followed by the conclusion that the proof
+/// should lead to.
+///
+/// The third argument is the set of strings that should be seen as a variable.
+/// For example, if this is the set ["x", "y", "z"], then something like ∀x P(x) will be accepted,
+/// but something like ∀a P(a) will not be accepted, because "a" is not listed as a string
+/// that should be seen as a variable.
+pub fn check_proof_with_template(
+    proof_lines: Vec<ProofLine>,
+    template: Vec<Wff>,
+    allowed_variable_names: HashSet<String>,
+) -> ProofResult {
+    match Proof::construct(proof_lines, allowed_variable_names) {
+        Err(err) => ProofResult::FatalError(err),
+        Ok(proof) => proof.is_fully_correct_and_matches_template(template),
+    }
+}
+
 /* ------------------ PRIVATE -------------------- */
 
 impl Proof {
+    /// Given a [Proof], this function checks if it is fully correct, AND that it matches the given
+    /// proof template. A template is a vector of [Wff]s, containing (in order) all the premises,
+    /// followed by the final conclusion that the proof should lead to.
+    ///
+    /// When you want to fully assess the validity of a proof, and
+    /// check that it matches the template, you should first
+    /// [Proof::construct] the proof, and then run this function.
+    fn is_fully_correct_and_matches_template(&self, template: Vec<Wff>) -> ProofResult {
+        // Note: don't remove this check on the length of `template`. It would cause some panics
+        // below if the length is zero.
+        if template.len() < 1 {
+            return ProofResult::FatalError("The proof template is empty. This should not be! If you see this on Themis as a student, please contact the course staff as soon as possible. Something is wrong on our side. Thanks!".to_owned());
+        }
+
+        // template matching errors that we will be accumulating.
+        let mut template_errors: Vec<String> = vec![];
+
+        // check premises
+        {
+            let premises_in_proof: Vec<Wff> = self
+                .lines
+                .iter()
+                .take_while(|l| !l.is_fitch_bar_line)
+                .filter_map(|l| l.sentence.clone())
+                .collect();
+
+            // index is within bounds
+            if premises_in_proof != template[0..template.len() - 1] {
+                template_errors.push(
+                    "The premises of your proof do not match the premises in the proof template."
+                        .to_owned(),
+                );
+            }
+        }
+
+        // check conclusion
+        {
+            let conclusion_in_proof = self.lines.iter().rev().find(|l| l.sentence.is_some());
+            match conclusion_in_proof {
+                None => {
+                    template_errors
+                        .push("It seems that your proof has no sentences in it.".to_owned());
+                }
+                Some(concl) => {
+                    // both unwraps work (note that we checked the length of `template`)
+                    if concl.sentence.as_ref().unwrap() != template.last().unwrap() {
+                        template_errors.push("The conclusion of your proof does not match the conclusion in the proof template.".to_owned());
+                    }
+                }
+            }
+        }
+
+        let result_without_template_check = self.is_fully_correct();
+        match result_without_template_check {
+            // If the proof generates a fatal error by itself, the user is not interested in
+            // template matching errors.
+            ProofResult::FatalError(_) => result_without_template_check,
+            // If there were already errors, just append any template matching errors.
+            ProofResult::Error(mut errs) => {
+                errs.append(&mut template_errors);
+                ProofResult::Error(errs)
+            }
+            // If there were any template mathing errors, change the Correct into Error. Otherwise
+            // it stays Correct.
+            ProofResult::Correct => {
+                if template_errors.is_empty() {
+                    ProofResult::Correct
+                } else {
+                    ProofResult::Error(template_errors)
+                }
+            }
+        }
+    }
     /// Given a [Proof], this function checks if it is fully correct.
     ///
     /// When you want to fully assess the validity of a proof, you should first [Proof::construct] the proof, and then run this function.

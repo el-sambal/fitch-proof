@@ -20,20 +20,20 @@ pub struct ProofLine {
     /// The line number of the proof line. This is *not* the index at which the current line
     /// occured in the input string that the user gave, but it is the line number inside a Fitch
     /// proof that the user wrote themselves. For example, for a line like this:
-    /// 
+    ///
     /// `42 | | | | P(a,b,c,d)  =Elim:137,108`
     ///
     /// this field in the struct would be `Some(42)`. This field must be [None] if and only if the
     /// corresponding line was an empty line or a Fitch bar line. In all other cases, the line
     /// number must be [Some(_)].
-    pub line_num: Option<usize>,    
+    pub line_num: Option<usize>,
     /// The number of vertical bars on the left side. This indicates in how many nested subproofs
     /// this proof line is.
     ///
     /// For example, this line would have a `depth` of `4`, since there are four vertical bars.
     ///
     /// `42 | | | | P(a,b,c,d)  =Elim:137,108`
-    pub depth: usize,          
+    pub depth: usize,
     // This field is `true` if and only if the corresponding proof line is a Fitch bar line.
     pub is_fitch_bar_line: bool,
     // The logical sentence ([Wff]) that this proof line contains.
@@ -41,7 +41,7 @@ pub struct ProofLine {
     // This field must be [None] if this proof line does not contain a sentence, which is
     // if you have a premise that only introduces a boxed constant without sentence, or if
     // you have an empty line or a Fitch bar line.
-    pub sentence: Option<Wff>, 
+    pub sentence: Option<Wff>,
     /// If the current proof line has a justification, it is stored in this field.
     ///
     /// If the current proof line has no justification, then this field should be [None]. This can
@@ -130,7 +130,18 @@ pub enum Justification {
 }
 
 pub enum ProofResult {
+    /// No mistakes; proof is correct.
     Correct,
-    FatalError(String),
+    /// An 'error' is a mistake that makes the proof wrong, but still allows
+    /// the checker to go on and find other mistakes. This [ProofResult::Error]
+    /// variant denotes the list of errors that was obtained during analysis.
     Error(Vec<String>),
+    /// A mistake that is so severe that the checker cannot continue its analysis.
+    /// When a fatal error occurs, this fatal error will be returned to the user,
+    /// with no other error messages along it.
+    ///
+    /// Note that when the user checks some proof that should match to some proof template,
+    /// a [ProofResult::FatalError] will be returned if the proof does
+    /// not match the template.
+    FatalError(String),
 }
