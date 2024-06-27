@@ -74,6 +74,55 @@ pub fn parse_allowed_variable_names(allowed_var_names: &str) -> Result<HashSet<S
     Ok(allowed_variable_names)
 }
 
+
+/// This function parses a *logical expression* from a String.
+///
+/// If it succeeds, a [Wff] is returned. Otherwise, a nice error message is returned.
+///
+/// The grammar: (brackets denote tokens; {} is EBNF notation for 0 or more times)
+///
+/// ```notrust
+/// <E1> ::=
+///            <E2>
+///          | <E2> and <E2> {and <E2>}
+///          | <E2> or <E2> {or <E2>}
+///          | <E2> implies <E2>
+///          | <E2> bicond <E2>
+///
+/// <E2> ::=
+///            <E3>
+///          | <Term> equals <Term>
+///
+/// <E3> ::=
+///            <PredicateName> <ArgList>
+///          | <AtomicPropositionName>
+///          | ( <E1> )
+///          | forall <VariableOrConstantName> <E3>
+///          | exists <VariableOrConstantName> <E3>
+///          | not <E3>
+///          | bottom
+///
+/// <Term> ::=
+///              <FunctionName> <ArgList>
+///            | <VariableOrConstantName>
+///
+/// <ArgList> ::= ( <Term> {, <Term>} )
+///
+/// <FunctionName> : some string starting with a lowercase letter
+/// <VariableOrConstantName> : some string starting with a lowercase letter
+/// <PredicateName> : some string starting with an UPPERCASE letter
+/// <AtomicPropositionName> : some string starting with an UPPERCASE letter
+/// ```
+pub fn parse_logical_expression_string(expr: &str) -> Option<Wff> {
+    if let Ok(toks) = lex(expr) {
+        return match parse_logical_expr(&toks) {
+            Ok(expr) => Some(expr),
+            _ => None,
+        };
+    }
+    None
+}
+
 /* ----------------- PRIVATE -------------------*/
 
 /// This is an enum containing tokens. The lexer converts a [String] to a vector of [Token]s, which
@@ -169,40 +218,8 @@ fn lex(input: &str) -> Result<Vec<Token>, String> {
 ///
 /// If it succeeds, a [Wff] is returned. Otherwise, a nice error message is returned.
 ///
-/// The grammar: (brackets denote tokens; {} is EBNF notation for 0 or more times)
+/// The grammar: see documentation of [parser::parse_logical_expression_string].
 ///
-/// ```notrust
-/// <E1> ::=
-///            <E2>
-///          | <E2> and <E2> {and <E2>}
-///          | <E2> or <E2> {or <E2>}
-///          | <E2> implies <E2>
-///          | <E2> bicond <E2>
-///
-/// <E2> ::=
-///            <E3>
-///          | <Term> equals <Term>
-///
-/// <E3> ::=
-///            <PredicateName> <ArgList>
-///          | <AtomicPropositionName>
-///          | ( <E1> )
-///          | forall <VariableOrConstantName> <E3>
-///          | exists <VariableOrConstantName> <E3>
-///          | not <E3>
-///          | bottom
-///
-/// <Term> ::=
-///              <FunctionName> <ArgList>
-///            | <VariableOrConstantName>
-///
-/// <ArgList> ::= ( <Term> {, <Term>} )
-///
-/// <FunctionName> : some string starting with a lowercase letter
-/// <VariableOrConstantName> : some string starting with a lowercase letter
-/// <PredicateName> : some string starting with an UPPERCASE letter
-/// <AtomicPropositionName> : some string starting with an UPPERCASE letter
-/// ```
 fn parse_logical_expr(toks: &[Token]) -> Result<Wff, String> {
     if let Some((wff, rem_toks)) = parse_e1(toks) {
         if rem_toks.is_empty() {
@@ -841,15 +858,6 @@ fn parse_justification(toks: &[Token]) -> Result<Justification, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn parse_logical_expression_string(expr: &str) -> Option<Wff> {
-        if let Ok(toks) = lex(expr) {
-            return match parse_logical_expr(&toks) {
-                Ok(expr) => Some(expr),
-                _ => None,
-            };
-        }
-        None
-    }
     #[test]
     fn test_lexer_1() {
         assert_eq!(

@@ -75,6 +75,6 @@ fn main() {
         variables
     };
 
-    let result = fitch_proof::check_proof(&proof, &variables);
+    let result = fitch_proof::check_proof_with_template(&proof,template, &variables);
     println!("{}", result);
 }

@@ -7,7 +7,7 @@ mod formatter;
 mod parser;
 mod proof;
 mod util;
-use crate::data::ProofResult;
+use crate::data::{ProofResult, Wff};
 
 macro_rules! default_variable_names {
     () => {
@@ -49,7 +49,7 @@ pub fn check_proof_with_template(
     template: Vec<String>,
     allowed_variable_names: &str,
 ) -> String {
-    let res = check_proof_to_proofresult(proof, allowed_variable_names);
+    let res = check_proof_to_proofresult_with_template(proof, &template, allowed_variable_names);
     match res {
         ProofResult::Correct => "The proof is correct!".to_string(),
         ProofResult::Error(errs) => errs.join("\n\n"),
@@ -90,7 +90,16 @@ fn check_proof_to_proofresult_with_template(
         parser::parse_fitch_proof(proof),
         parser::parse_allowed_variable_names(allowed_variable_names),
     ) {
-        (Ok(proof_lines), Ok(variable_names)) => checker::check_proof_with_template(proof_lines, ,variable_names),
+        (Ok(proof_lines), Ok(variable_names)) => {
+            let template_wffs: Vec<Wff> = template
+                .iter()
+                .filter_map(|s| parser::parse_logical_expression_string(s))
+                .collect();
+            if template_wffs.len() != template.len() {
+                return ProofResult::FatalError("Some sentences in the template file could not be parsed. If you see this as a student on Themis, please contact the course staff as soon as possible; something is wrong on our side. Thanks!".to_owned());
+            }
+            checker::check_proof_with_template(proof_lines, template_wffs, variable_names)
+        }
         (Err(err), _) | (_, Err(err)) => ProofResult::FatalError(err),
     }
 }

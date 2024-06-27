@@ -1,0 +1,2 @@
+∀x∃x R(x,y) → ∃y∀x R(x,y)
+∃y(∀y¬R(x,y) ∨ ∀y R(y,x))
