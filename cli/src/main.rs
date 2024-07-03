@@ -10,11 +10,21 @@ fn fail_open_file(filename: &str) -> ! {
     std::process::exit(1)
 }
 
+fn find_txt_file() -> String {
+    let paths = std::fs::read_dir("./").unwrap();
+    for path in paths {
+        let filename = path.unwrap().path().display().to_string();
+        if filename.ends_with(".txt") {
+            return filename;
+        }
+    }
+    "you-should-upload-a-dot-txt-file".to_string()
+}
+
 fn main() {
-    let mut paths = std::fs::read_dir("./").unwrap();
-    let proof_filename = paths.next().unwrap().unwrap().path().display().to_string();
-    let Ok(proof) = std::fs::read_to_string(&proof_filename) else {
-        fail_open_file(&proof_filename)
+    let proof_file = find_txt_file();
+    let Ok(proof) = std::fs::read_to_string(&proof_file) else {
+        fail_open_file(&proof_file)
     };
     let template: Vec<String> = std::io::stdin()
         .lines()

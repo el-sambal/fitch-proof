@@ -5,3 +5,9 @@ edition = "2021"
 
 [dependencies]
 fitch-proof = { path = "../fitch-proof" }
+
+[profile.release]
+lto = true
+opt-level = "z"
+strip = true
+panic = "abort"
