@@ -60,7 +60,7 @@ impl Proof {
     fn is_fully_correct_and_matches_template(&self, template: Vec<Wff>) -> ProofResult {
         // Note: don't remove this check on the length of `template`. It would cause some panics
         // below if the length is zero.
-        if template.len() < 1 {
+        if template.is_empty() {
             return ProofResult::FatalError("The proof template is empty. This should not be! If you see this on Themis as a student, please contact the course staff as soon as possible. Something is wrong on our side. Thanks!".to_owned());
         }
 

@@ -17,12 +17,11 @@ fn fail_open_file(filename: &str) -> ! {
 fn find_txt_file() -> String {
     let mut already_found_txt = false;
     let paths = std::fs::read_dir("./").unwrap(); // all files
-    let mut filename = "".to_string(); // whatever file is being processed (not necessary .txt)
     let mut txt_filename = "".to_string(); // what we're going to return
 
     for path in paths {
         let old_txt_filename = txt_filename.clone();
-        filename = path.unwrap().path().display().to_string();
+        let filename = path.unwrap().path().display().to_string();
 
         if filename.ends_with(".txt") {
             if already_found_txt {
@@ -39,7 +38,7 @@ fn find_txt_file() -> String {
     }
 
     if already_found_txt {
-        filename
+        txt_filename
     } else {
         println!(
             "Could not find a .txt file in this directory.
