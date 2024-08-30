@@ -1,5 +1,4 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
+name: Compile Rust to WASM and deploy to Github Pages
 
 on:
   # Runs on pushes targeting the default branch
@@ -21,6 +20,9 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   # Single deploy job since we're just deploying
   deploy:
@@ -31,6 +33,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Install WASM-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Build to WASM
+        run: wasm-pack build --release --target web fitch-proof
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
