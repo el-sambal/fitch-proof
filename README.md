@@ -1,6 +1,6 @@
 # PLEASE TAKE NOTE!
 
-For technical reasons, the prover itself has temporarily moved to the address [https://el-sambal.github.io/fitch/](https://el-sambal.github.io/fitch/).
+For technical reasons, the prover itself has temporarily moved to the address [https://el-sambal.github.io/fitch/](https://el-sambal.github.io/fitch/). This is a test...
 
 # What is this?
 
