@@ -174,18 +174,20 @@
    <button id="settings-button" title="Toggle visibility of advanced settings">ADVANCED SETTINGS</button>
    <br>
    <br>
-   <div id="additional-examples" style="background-color: white;border: 3px solid black;border-radius: 10px;color:black; max-width: 100ch; margin-bottom: 1em; margin-left: auto; margin-right: auto; "
+   <div id="additional-examples" style="padding-top:10px;background-color: white;border: 3px solid black;border-radius: 10px;color:black; max-width: 100ch; margin-bottom: 1em; margin-left: auto; margin-right: auto; "
         hidden>
      <strong>Example proofs</strong>
      <ul>
        <li><a href="javascript:load_example(ex1);">A ∧ B ⊢ B ∧ A</a></li>
-       <li><a href="javascript:load_example(ex2);">P(a) ∨ P(b), a=c ∨ b=c ⊢ P(c)</a></li>
-       <li><a href="javascript:load_example(ex3);">∀x∃y R(x,y) → ∃y∀x R(x,y) ⊢ ∃x(∀y¬R(x,y) ∨ ∀y R(y,x))</a></li>
+       <li><a href="javascript:load_example(ex2);">P(a) ∧ P(b), a=c ∨ b=c ⊢ P(c)</a></li>
+       <li><a href="javascript:load_example(ex3);">∀x∃y R(x,y) → ∃y∀x R(x,y) ⊢ ∃x(∀y ¬R(x,y) ∨ ∀y R(y,x))</a></li>
      </ul>
    </div>
-   <div id="advanced-settings" style="background-color: white;border: 3px solid black;border-radius: 10px;color:black; max-width: 100ch; margin-left: auto; margin-right: auto; "
+   <div id="advanced-settings" style="padding-top:10px;background-color: white;border: 3px solid black;border-radius: 10px;color:black; max-width: 100ch; margin-left: auto; margin-right: auto; "
       hidden>
       <strong>Advanced Settings (do not change unless you really have a good reason)</strong>
+      <br>
+      <br>
       <p>List of strings that should be recognized as variables (separated by commas): <input id="allowed-variable-names"
          value="x,y,z,u,v,w" /><br>
       <em>(For example, using the default settings, having ∀x P(x) is allowed, but having ∀a P(a) is not, because a is
@@ -193,7 +195,6 @@
          strings that start with a lowercase letter will be seen as a constant or function symbol, depending on the
         context in which they are found.)</em></p>
       <br/>
-      <strong>Proof rotation</strong>
       <p>Rotate the proof by 180 degrees: <button id="upside-down-button" title="Rotate proof...">ROTATE PROOF...</button></p>
    </div>
 
