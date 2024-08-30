@@ -3,6 +3,7 @@
 <head>
    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
    <link rel="stylesheet" type="text/css" href="style.css" />
+   <script type="text/javascript" src="examples.js"></script>
    <title>FitchVIZIER</title>
 </head>
 
@@ -51,7 +52,26 @@
       function toggle_show_advanced_settings() {
          advanced_settings_are_visible = !advanced_settings_are_visible;
          document.getElementById("advanced-settings").hidden = !advanced_settings_are_visible;
+      };
+
+      let examples_are_visible = false;
+      function show_examples() {
+         examples_are_visible = !examples_are_visible;
+         document.getElementById("additional-examples").hidden = !examples_are_visible;
       }
+      export function load_example(ex) {
+          let v = document.getElementById('proof-field').value;
+          if (v !== "")
+          {
+              if (confirm("Your proof are is not empty. Loading an example will overwrite your current proof. Are you sure you want to continue?"))
+              { 
+                  console.log(ex);
+                  document.getElementById('proof-field').value = ex;
+                  process_user_input();
+              }
+          }
+      }
+      window.load_example = load_example;
 
       let proof_is_upside_down = false;
       function upside_down() {
@@ -109,6 +129,7 @@
       document.getElementById("proof-field").onkeyup = process_user_input;
       document.getElementById("format-button").onclick = format;
       document.getElementById("latex-button").onclick = to_latex;
+      document.getElementById("load-example-button").onclick = show_examples;
       document.getElementById("upside-down-button").onclick = upside_down;
       document.getElementById("fix-line-numbers-button").onclick = fix_line_numbers;
       document.getElementById("settings-button").onclick = toggle_show_advanced_settings;
@@ -211,11 +232,19 @@
    <button id="fix-line-numbers-button"
       title="Fix the line numbers in a proof, and automatically update justifications. For example, suppose you want to delete a line in the middle of your proof. In that case, you can just delete that line and press this button afterwards, which will fix up the line numbers. If you want to insert a line in the middle of your proof, just initially give it a line number of 100 or so, and click this button afterwards.">FIX
       LINE NUMBERS</button>
+   <button id="load-example-button" title="Load example proof">SHOW EXAMPLES</button>
    <button id="settings-button" title="Toggle visibility of advanced settings">ADVANCED SETTINGS</button>
-
    <br>
    <br>
-   <div id="advanced-settings" style="background-color: white;border: 3px solid black;border-radius: 10px;color:black; max-width: 90ch; margin-left: auto; margin-right: auto; "
+   <div id="additional-examples" style="background-color: white;border: 3px solid black;border-radius: 10px;color:black; max-width: 100ch; margin-bottom: 1em; margin-left: auto; margin-right: auto; "
+        hidden>
+     <strong>Example proofs</strong>
+     <ul>
+       <li><a href="javascript:load_example(ex1);">A ∧ B ⊢ B ∧ A</a></li>
+       <li><a href="javascript:load_example(ex2);">P(a) ∨ P(b), a=c ∨ b=c ⊢ P(c)</a></li>
+     </ul>
+   </div>
+   <div id="advanced-settings" style="background-color: white;border: 3px solid black;border-radius: 10px;color:black; max-width: 100ch; margin-left: auto; margin-right: auto; "
       hidden>
       <strong>Advanced Settings (do not change unless you really have a good reason)</strong>
       <p>List of strings that should be recognized as variables (separated by commas): <input id="allowed-variable-names"

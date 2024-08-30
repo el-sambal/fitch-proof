@@ -12,6 +12,10 @@ a {
   text-decoration: none;
 }
 
+#additional-examples  a:link {
+    color: black;
+    text-decoration: underline;
+}
 textarea {
   border: 4px solid black;
   color: black;
