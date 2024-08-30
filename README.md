@@ -1,3 +1,7 @@
+# PLEASE TAKE NOTE!
+
+For technical reasons, the prover itself has temporarily moved to the address [https://el-sambal.github.io/fitch/](https://el-sambal.github.io/fitch/).
+
 # What is this?
 
 This is a formal proof validator, which assesses the correctness of Fitch-style natural deduction proofs ("Fitch proofs").
