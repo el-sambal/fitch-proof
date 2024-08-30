@@ -1,10 +1,8 @@
-# PLEASE TAKE NOTE!
-
-For technical reasons, the prover itself has temporarily moved to the address [https://el-sambal.github.io/fitch/](https://el-sambal.github.io/fitch/). This is a test...
-
 # What is this?
 
-This is a formal proof validator, which assesses the correctness of Fitch-style natural deduction proofs ("Fitch proofs").
+This is a formal proof validator, which determines the correctness of Fitch-style natural deduction proofs ("Fitch proofs").
+
+The tool is used by students who follow the course Introduction to Logic (for CS) at the University of Groningen (the Netherlands).
 
 The tool also returns a (hopefully useful) error message in case the proof is not correct.
 
@@ -12,7 +10,7 @@ This application takes Fitch proofs as they are defined in *Language, Proof and 
 
 # How to run it?
 
-It is accessible here: [el-sambal.github.io/fitch-proof](https://el-sambal.github.io/fitch).
+It is accessible here: [https://fitch.themisrug.nl](https://fitch.themisrug.nl).
 
 If you want to build and run the application locally, then clone the repository, install Cargo if you haven't already and install `wasm-pack` (to compile Rust to WebAssembly) and do:
 
@@ -20,7 +18,7 @@ If you want to build and run the application locally, then clone the repository,
 wasm-pack build --target web
 ```
 
-Once you have it compiled, open a server in the root directory of the repository:
+Once you have it compiled, open a server in the `fitch-proof` directory of the repository:
 ```
 python3 -m http.server 8080
 ```
