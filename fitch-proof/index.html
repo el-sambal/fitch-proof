@@ -3,11 +3,12 @@
 <head>
    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
    <link rel="stylesheet" type="text/css" href="style.css" />
+   <title>FitchVIZIER</title>
 </head>
 
 <body>
-    <strong style="font-size:50px;color:white;">Fitch<em>VIZIER</em></strong><br>
-   <a href="https://github.com/el-sambal/fitch-proof">https://github.com/el-sambal/fitch-proof</a><br><br>
+   <p><strong style="font-size:50px;color:white;">Fitch<em>VIZIER</em></strong></p>
+
    <script type="module">
       import init, { check_proof, format_proof, fix_line_numbers_in_proof, export_to_latex } from './pkg/fitch_proof.js';
 
@@ -226,7 +227,9 @@
          not used for variables. With this setting, you can change which strings should be seen as a variable. All other
          strings that start with a lowercase letter will be seen as a constant or function symbol, depending on the
          context in which they are found.)</em>
-   </div><br><br>
+   </div>
+
+   <p><a href="https://github.com/el-sambal/fitch-proof">Source code: https://github.com/el-sambal/fitch-proof</a></p>
 </body>
 
 </html>
