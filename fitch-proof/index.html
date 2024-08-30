@@ -3,11 +3,13 @@
 <head>
    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
    <link rel="stylesheet" type="text/css" href="style.css" />
+   <script type="text/javascript" src="examples.js"></script>
+   <title>FitchVIZIER</title>
 </head>
 
 <body>
-    <strong style="font-size:50px;color:white;">Fitch<em>VIZIER</em></strong><br>
-   <a href="https://github.com/el-sambal/fitch-proof">https://github.com/el-sambal/fitch-proof</a><br><br>
+   <p><strong style="font-size:50px;color:white;">Fitch<em>VIZIER</em></strong></p>
+
    <script type="module">
       import init, { check_proof, format_proof, fix_line_numbers_in_proof, export_to_latex } from './pkg/fitch_proof.js';
 
@@ -50,7 +52,27 @@
       function toggle_show_advanced_settings() {
          advanced_settings_are_visible = !advanced_settings_are_visible;
          document.getElementById("advanced-settings").hidden = !advanced_settings_are_visible;
+      };
+
+      let examples_are_visible = false;
+      function show_examples() {
+         examples_are_visible = !examples_are_visible;
+         document.getElementById("additional-examples").hidden = !examples_are_visible;
       }
+      export function load_example(ex) {
+          let rdy = document.getElementById('proof-field').value == "";
+          if (! rdy)
+          {
+              rdy = confirm("Your proof area is not empty. Loading an example will overwrite your current proof. Are you sure you want to continue?");
+          }
+          if (rdy)
+          { 
+              console.log(ex);
+              document.getElementById('proof-field').value = ex;
+              process_user_input();
+          }
+      }
+      window.load_example = load_example;
 
       let proof_is_upside_down = false;
       function upside_down() {
@@ -108,6 +130,7 @@
       document.getElementById("proof-field").onkeyup = process_user_input;
       document.getElementById("format-button").onclick = format;
       document.getElementById("latex-button").onclick = to_latex;
+      document.getElementById("load-example-button").onclick = show_examples;
       document.getElementById("upside-down-button").onclick = upside_down;
       document.getElementById("fix-line-numbers-button").onclick = fix_line_numbers;
       document.getElementById("settings-button").onclick = toggle_show_advanced_settings;
@@ -116,74 +139,11 @@
       process_user_input();
    </script>
    <textarea spellcheck="false" rows=30 cols=90 id="proof-field">
-1  | ∀x∃y R(x,y) → ∃y∀x R(x,y)
-   | ---
-2  | | ¬(∀x∃y R(x,y) ∨ ¬∀x∃y R(x,y))
-   | | ---
-3  | | | ∀x∃y R(x,y)
-   | | | ---
-4  | | | ∀x∃y R(x,y) ∨ ¬∀x∃y R(x,y)           ∨ Intro: 3
-5  | | | ⊥                                    ⊥ Intro: 4,2
-6  | | ¬∀x∃y R(x,y)                           ¬ Intro: 3-5
-7  | | ∀x∃y R(x,y) ∨ ¬∀x∃y R(x,y)             ∨ Intro: 6
-8  | | ⊥                                      ⊥ Intro: 7,2
-9  | ¬¬(∀x∃y R(x, y) ∨ ¬∀x∃y R(x, y))         ¬ Intro: 2-8
-10 | ∀x∃y R(x, y) ∨ ¬∀x∃y R(x, y)             ¬ Elim: 9
-11 | | ∀x∃y R(x,y)
-   | | ---
-12 | | ∃y∀x R(x, y)                           → Elim: 1,11
-13 | | ∃y∀x R(x, y) ∨ ∃x∀y¬R(x, y)            ∨ Intro: 12
-   |
-14 | | ¬∀x∃y R(x, y)
-   | | ---
-15 | | | ¬∃x∀y ¬R(x, y)
-   | | | ---
-16 | | | | [a]
-   | | | | ---
-17 | | | | | ∀y¬R(a, y)
-   | | | | | ---
-18 | | | | | ∃x∀y ¬R(x, y)                    ∃ Intro: 17
-19 | | | | | ⊥                                ⊥ Intro: 18,15
-20 | | | | ¬∀y ¬R(a, y)                       ¬ Intro: 17-19
-21 | | | | | ¬∃y R(a, y)
-   | | | | | ---
-22 | | | | | | [b]
-   | | | | | | ---
-23 | | | | | | | R(a,b)
-   | | | | | | | ---
-24 | | | | | | | ∃y R(a, y)                   ∃ Intro: 23
-25 | | | | | | | ⊥                            ⊥ Intro: 24, 21
-26 | | | | | | ¬R(a, b)                       ¬ Intro: 23-25
-27 | | | | | ∀y ¬R(a, y)                      ∀ Intro: 22-26
-28 | | | | | ⊥                                ⊥ Intro: 27,20
-29 | | | | ¬¬∃y R(a, y)                       ¬ Intro: 21-28
-30 | | | | ∃y R(a, y)                         ¬ Elim: 29
-31 | | | ∀x∃y R(x, y)                         ∀ Intro: 16-30
-32 | | | ⊥                                    ⊥ Intro: 31,14
-33 | | ¬¬∃x∀y ¬R(x, y)                        ¬ Intro: 15-32
-34 | | ∃x∀y ¬R(x, y)                          ¬ Elim: 33
-35 | | ∃y∀x R(x, y) ∨ ∃x∀y ¬R(x, y)           ∨ Intro: 34
-36 | ∃y∀x R(x, y) ∨ ∃x∀y ¬R(x, y)             ∨ Elim: 10, 11-13, 14-35
-37 | | ∃x∀y¬R(x, y)
-   | | ---
-38 | | | [c] ∀y ¬R(c, y)
-   | | | ---
-39 | | | ∀y¬R(c, y) ∨ ∀y R(y, c)              ∨ Intro: 38
-40 | | | ∃x(∀y¬R(x, y) ∨ ∀y R(y, x))          ∃ Intro: 39
-41 | | ∃x(∀y¬R(x, y) ∨ ∀y R(y, x))            ∃ Elim: 37, 38-40
-   |
-42 | | ∃y∀x R(x, y)
-   | | ---
-43 | | | [d] ∀x R(x, d)
-   | | | ---
-44 | | | | [e]
-   | | | | ---
-45 | | | | R(e,d)                             ∀ Elim: 43
-46 | | | ∀y R(y, d)                           ∀ Intro: 44-45
-47 | | | ∀y¬R(d, y) ∨ ∀y R(y, d)              ∨ Intro: 46
-48 | | | ∃x(  ∀y¬R(x, y) ∨ ∀y R(y, x))        ∃ Intro: 47
-49 | | ∃x(∀y ¬R(x, y) ∨  ∀y R(y, x))          ∃ Elim: 42, 43-48
-50 | ∃x(∀y¬R(x,y) ∨ ∀y R(y,x))                ∨ Elim: 36, 42-49, 37-41
+1 | ∀x (H(x) → M(x))
+2 | H(socrates)
+  |----
+3 | H(socrates) → M(socrates)         ∀ Elim: 1
+4 | M(socrates)                       → Elim: 3,2
 </textarea><br>
 
    <br>
@@ -210,23 +170,35 @@
    <button id="fix-line-numbers-button"
       title="Fix the line numbers in a proof, and automatically update justifications. For example, suppose you want to delete a line in the middle of your proof. In that case, you can just delete that line and press this button afterwards, which will fix up the line numbers. If you want to insert a line in the middle of your proof, just initially give it a line number of 100 or so, and click this button afterwards.">FIX
       LINE NUMBERS</button>
-   <button id="settings-button" title="Toggle visibility of the settings">SHOW/HIDE
-      SETTINGS</button>
-   <button id="upside-down-button" title="Rotate proof...">ROTATE PROOF</button>
-
+   <button id="load-example-button" title="Load example proof">SHOW EXAMPLES</button>
+   <button id="settings-button" title="Toggle visibility of advanced settings">ADVANCED SETTINGS</button>
    <br>
    <br>
-   <div id="advanced-settings" style="background-color: white;border: 3px solid black;border-radius: 10px;color:black;"
+   <div id="additional-examples" style="padding-top:10px;background-color: white;border: 3px solid black;border-radius: 10px;color:black; max-width: 100ch; margin-bottom: 1em; margin-left: auto; margin-right: auto; "
+        hidden>
+     <strong>Example proofs</strong>
+     <ul>
+       <li><a href="javascript:load_example(ex1);">A ∧ B ⊢ B ∧ A</a></li>
+       <li><a href="javascript:load_example(ex2);">P(a) ∧ P(b), a=c ∨ b=c ⊢ P(c)</a></li>
+       <li><a href="javascript:load_example(ex3);">∀x∃y R(x,y) → ∃y∀x R(x,y) ⊢ ∃x(∀y ¬R(x,y) ∨ ∀y R(y,x))</a></li>
+     </ul>
+   </div>
+   <div id="advanced-settings" style="padding-top:10px;background-color: white;border: 3px solid black;border-radius: 10px;color:black; max-width: 100ch; margin-left: auto; margin-right: auto; "
       hidden>
-      <strong>Settings (do not change unless you really have a good reason)</strong>
-      <br><br>
-      List of strings that should be recognized as variables (separated by commas): <input id="allowed-variable-names"
+      <strong>Advanced Settings (do not change unless you really have a good reason)</strong>
+      <br>
+      <br>
+      <p>List of strings that should be recognized as variables (separated by commas): <input id="allowed-variable-names"
          value="x,y,z,u,v,w" /><br>
       <em>(For example, using the default settings, having ∀x P(x) is allowed, but having ∀a P(a) is not, because a is
          not used for variables. With this setting, you can change which strings should be seen as a variable. All other
          strings that start with a lowercase letter will be seen as a constant or function symbol, depending on the
-         context in which they are found.)</em>
-   </div><br><br>
+        context in which they are found.)</em></p>
+      <br/>
+      <p>Rotate the proof by 180 degrees: <button id="upside-down-button" title="Rotate proof...">ROTATE PROOF...</button></p>
+   </div>
+
+   <p><a href="https://github.com/el-sambal/fitch-proof">Source code: https://github.com/el-sambal/fitch-proof</a></p>
 </body>
 
 </html>
