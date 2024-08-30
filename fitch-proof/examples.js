@@ -4,8 +4,7 @@ let ex1 = `1 | A ∧ B
 3 | A             ∧ Elim: 1
 4 | B ∧ A         ∧ Intro: 2, 3`;
 
-let ex2 = `
-1 | P(a) ∧ P(b)
+let ex2 = `1 | P(a) ∧ P(b)
 2 | (a=c) ∨ (b=c)
   |----
 3 | | a=c

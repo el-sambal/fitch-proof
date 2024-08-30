@@ -60,15 +60,16 @@
          document.getElementById("additional-examples").hidden = !examples_are_visible;
       }
       export function load_example(ex) {
-          let v = document.getElementById('proof-field').value;
-          if (v !== "")
+          let rdy = document.getElementById('proof-field').value == "";
+          if (! rdy)
           {
-              if (confirm("Your proof are is not empty. Loading an example will overwrite your current proof. Are you sure you want to continue?"))
-              { 
-                  console.log(ex);
-                  document.getElementById('proof-field').value = ex;
-                  process_user_input();
-              }
+              rdy = confirm("Your proof are is not empty. Loading an example will overwrite your current proof. Are you sure you want to continue?");
+          }
+          if (rdy)
+          { 
+              console.log(ex);
+              document.getElementById('proof-field').value = ex;
+              process_user_input();
           }
       }
       window.load_example = load_example;
