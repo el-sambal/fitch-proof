@@ -211,22 +211,22 @@
    <button id="fix-line-numbers-button"
       title="Fix the line numbers in a proof, and automatically update justifications. For example, suppose you want to delete a line in the middle of your proof. In that case, you can just delete that line and press this button afterwards, which will fix up the line numbers. If you want to insert a line in the middle of your proof, just initially give it a line number of 100 or so, and click this button afterwards.">FIX
       LINE NUMBERS</button>
-   <button id="settings-button" title="Toggle visibility of the settings">SHOW/HIDE
-      SETTINGS</button>
-   <button id="upside-down-button" title="Rotate proof...">ROTATE PROOF</button>
+   <button id="settings-button" title="Toggle visibility of advanced settings">ADVANCED SETTINGS</button>
 
    <br>
    <br>
-   <div id="advanced-settings" style="background-color: white;border: 3px solid black;border-radius: 10px;color:black;"
+   <div id="advanced-settings" style="background-color: white;border: 3px solid black;border-radius: 10px;color:black; max-width: 90ch; margin-left: auto; margin-right: auto; "
       hidden>
-      <strong>Settings (do not change unless you really have a good reason)</strong>
-      <br><br>
-      List of strings that should be recognized as variables (separated by commas): <input id="allowed-variable-names"
+      <strong>Advanced Settings (do not change unless you really have a good reason)</strong>
+      <p>List of strings that should be recognized as variables (separated by commas): <input id="allowed-variable-names"
          value="x,y,z,u,v,w" /><br>
       <em>(For example, using the default settings, having ∀x P(x) is allowed, but having ∀a P(a) is not, because a is
          not used for variables. With this setting, you can change which strings should be seen as a variable. All other
          strings that start with a lowercase letter will be seen as a constant or function symbol, depending on the
-         context in which they are found.)</em>
+        context in which they are found.)</em></p>
+      <br/>
+      <strong>Proof rotation</strong>
+      <p>Rotate the proof by 180 degrees: <button id="upside-down-button" title="Rotate proof...">ROTATE PROOF...</button></p>
    </div>
 
    <p><a href="https://github.com/el-sambal/fitch-proof">Source code: https://github.com/el-sambal/fitch-proof</a></p>
