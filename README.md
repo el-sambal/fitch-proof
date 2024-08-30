@@ -12,7 +12,7 @@ This application takes Fitch proofs as they are defined in *Language, Proof and 
 
 # How to run it?
 
-It is accessible here: [el-sambal.github.io/fitch-proof](https://el-sambal.github.io/fitch-proof).
+It is accessible here: [el-sambal.github.io/fitch-proof](https://el-sambal.github.io/fitch).
 
 If you want to build and run the application locally, then clone the repository, install Cargo if you haven't already and install `wasm-pack` (to compile Rust to WebAssembly) and do:
 
