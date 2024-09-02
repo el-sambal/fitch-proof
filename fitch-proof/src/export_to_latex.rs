@@ -10,9 +10,6 @@ pub fn proof_to_latex(proof: &[ProofLine]) -> String {
         if l.is_fitch_bar_line {
             is_hypo = false;
         }
-        if l.line_num.is_none() {
-            return output;
-        }
         let part1 = if l.depth == prev_depth + 1 {
             prev_depth += 1;
             is_hypo = true;
@@ -23,6 +20,10 @@ pub fn proof_to_latex(proof: &[ProofLine]) -> String {
         } else {
             ""
         };
+        if l.line_num.is_none() {
+            let _ = write!(output, "{}", part1);
+            return output;
+        }
         let part2 = format!(
             "{}{{{}}}{{{}{}}}",
             if is_hypo {
