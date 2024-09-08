@@ -21,6 +21,7 @@ textarea {
   color: black;
   border-radius: 10px;
   padding: 8px;
+  font-family: monospace
 }
 
 textarea:disabled {
