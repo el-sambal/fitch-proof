@@ -1,3 +1,7 @@
+# IMPORTANT (!!!)
+
+This repository contains the version of FitchVizier that was used during the academic year 2024-2025. As of August 2025, FitchVizier will be maintained by the Fundamental Computing group: [https://github.com/FundamentalComputing/FitchVIZIER](https://github.com/FundamentalComputing/FitchVIZIER). Updates to the tool will only be reflected in FundamentalComputing's repository, not in this one.
+
 # What is this?
 
 This is a formal proof validator, which determines the correctness of Fitch-style natural deduction proofs ("Fitch proofs").
@@ -10,7 +14,7 @@ This application takes Fitch proofs as they are defined in *Language, Proof and 
 
 # How to run it?
 
-It is accessible here: [https://fitch.themisrug.nl](https://fitch.themisrug.nl).
+It is accessible here: [https://fitch.rug.themisjudge.nl/](https://fitch.rug.themisjudge.nl/) (previously at [https://fitch.themisrug.nl](https://fitch.themisrug.nl)).
 
 If you want to build and run the application locally, then clone the repository, install Cargo if you haven't already and install `wasm-pack` (to compile Rust to WebAssembly) and do:
 
